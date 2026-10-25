@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ShareWa"
+description = "A consent-first WhatsApp messaging workspace with a Baileys-linked personal account, contacts with consent records, manual one-to-one messaging, and live status."
+version = "1.0.0"
+id = "artifacts/sharewa"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25841
+
+[services.development]
+run = "pnpm --filter @workspace/sharewa run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sharewa", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sharewa/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25841"
+BASE_PATH = "/"

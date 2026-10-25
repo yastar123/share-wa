@@ -1,0 +1,53 @@
+Ringkasan Spesifikasi: Platform ShareWa
+
+Stack: Baileys (WhatsApp), ReactJS (frontend), ExpressJS (backend), PostgreSQL (database). Tampilan mengacu pada https://sharewa.me/
+
+Konsep Umum
+
+Platform pengelolaan nomor WhatsApp: pengguna menghubungkan nomor, menjalankan pengiriman pesan ke daftar tujuan, memantau hasil real-time, lalu mencairkan saldo yang didapat dari pesan berhasil dan komisi referral.
+
+Elemen Global
+Header: logo ShareWa, pilihan bahasa IN | EN | ZH, avatar pengguna
+Navigasi bawah: Ringkasan, Nomor, Tarik Saldo, Tim
+Landing page: headline “Semua pesan Anda dalam satu layar”, poin (hubungkan perangkat, jalankan pengiriman, pantau real-time), tombol Mulai sekarang
+1. Autentikasi
+
+Masuk: tombol Beranda, form nama pengguna dan kata sandi (toggle tampil/sembunyi), tombol “Masuk →”, link buat akun, teks persetujuan S&K dan Kebijakan Privasi.
+
+Daftar: nama lengkap, nama pengguna (huruf kecil, angka, underscore), kata sandi (min. 6 karakter), kode referral opsional (bonus untuk kedua pihak), peringatan “belum ada pemulihan kata sandi”, verifikasi Cloudflare Turnstile, checkbox S&K, tombol “Buat akun saya →”.
+
+2. Pengaturan Akun
+Data akun: nama lengkap, username (tidak bisa diubah), username Telegram (untuk kontak admin), kata sandi baru + ulangi
+Tujuan pencairan: tab Bank | e-Wallet (isian direset saat ganti tab), dropdown bank, nomor rekening/HP, nama pemilik (peringatan: harus sama persis atau penarikan ditolak), tombol simpan
+3. Ringkasan (Dashboard)
+Status “SEMUA NORMAL”
+Kartu saldo siap tarik, minimal tarik, rekening tujuan, tombol Tarik saldo
+Statistik: nomor jalan (x/y), sisa antrean, pesan terkirim, nomor putus, total masuk, sudah ditarik
+Sambungkan nomor (tombol memulai pairing QR)
+Ajak teman: kode referral, salin link, komisi Rp 50 per pesan tim
+Statistik tim: komisi, anggota aktif, pesan tim, nomor tim
+Bantuan: tombol kirim laporan via Telegram
+4. Halaman Nomor
+Kartu “Nomor menunggu dikirim”, slot perangkat (maks 4), tombol + Tambah Perangkat
+Kondisi kosong: “Belum ada nomor tersambung”
+Atur semua nomor: dropdown daftar tujuan (negara/kode + harga per pesan, dengan pencarian), dropdown jeda antar pesan (1 dtk sampai 60 dtk, dengan label risiko), checkbox pernyataan Aturan Profil, tombol Jalankan semua dan Setop semua
+Kartu per nomor (SLOT n): nomor, nama, status (Siap/Berjalan/Putus), saldo nomor, tombol hapus, jeda per nomor, batas kirim per nomor, statistik (dikirim, berhasil, gagal), tombol Jalankan
+Ringkasan performa blast: slot aktif, sukses, gagal (lihat detail), partisipasi campaign, nomor tertaut, rata-rata kecepatan (dtk/pesan)
+
+Modal “Sambungkan nomor” (2 langkah): input nomor WhatsApp, tombol “Minta kode” (pairing code), atau “Pindai QR”.
+
+Modal “Siap kirim?”: pilih kategori kontak, info nomor (foto, nomor, nama), checkbox pernyataan profil, tombol Batal dan Jalankan.
+
+5. Tarik Saldo
+Jam pencairan 07.00–22.00 (di luar jam diproses besok)
+Kartu saldo dengan progress menuju batas tarik (Rp 100.000)
+Nominal cepat: 100k, 200k, 300k, 600k, 1M, 2M, plus input manual, tombol Cairkan
+Riwayat dengan filter: Diproses, Cair, Ditolak, Dibatalkan (ada kondisi kosong)
+6. Tim (Referral)
+Kartu kode ajakan: salin kode, bagikan, link
+Statistik: anggota tim, pesan berhasil, komisi masuk
+Daftar anggota yang bergabung (filter Terbaru, kondisi kosong)
+Gambaran Arsitektur
+Backend (Express): auth (JWT), manajemen sesi Baileys per slot, antrean pengiriman, perhitungan saldo/komisi, pencairan, admin
+Database (PostgreSQL): users, devices, destination_lists, campaigns, messages, balances, withdrawals, referrals, bank_accounts
+Frontend (React): halaman Login, Daftar, Ringkasan, Nomor, Tarik Saldo, Tim, Pengaturan, dengan i18n (ID/EN/ZH) dan layout mobile-first

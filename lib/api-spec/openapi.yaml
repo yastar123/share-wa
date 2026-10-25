@@ -10,6 +10,16 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: profile
+    description: User profile and preferences
+  - name: dashboard
+    description: Dashboard summaries and recent activity
+  - name: contacts
+    description: Consent-aware contact management
+  - name: connection
+    description: User-owned WhatsApp linked-device connection
+  - name: messages
+    description: Manual one-recipient messaging
 paths:
   /healthz:
     get:
@@ -24,6 +34,266 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get the current user's profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    patch:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update profile details and language preference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get consent and messaging overview
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /dashboard/activity:
+    get:
+      operationId: getDashboardActivity
+      tags: [dashboard]
+      summary: Get recent account activity
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+  /contacts:
+    get:
+      operationId: listContacts
+      tags: [contacts]
+      summary: List the current user's contacts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: consent
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, opted_in, opted_out, pending]
+            default: all
+      responses:
+        "200":
+          description: Contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contact"
+    post:
+      operationId: createContact
+      tags: [contacts]
+      summary: Add a contact with recorded consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Contact created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+  /contacts/{contactId}:
+    parameters:
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateContact
+      tags: [contacts]
+      summary: Update a contact's display details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactUpdate"
+      responses:
+        "200":
+          description: Updated contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+    delete:
+      operationId: deleteContact
+      tags: [contacts]
+      summary: Remove a contact and its associated message history
+      responses:
+        "204":
+          description: Contact removed
+  /contacts/{contactId}/consent:
+    parameters:
+      - name: contactId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateContactConsent
+      tags: [contacts]
+      summary: Record consent or opt-out for one contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentUpdate"
+      responses:
+        "200":
+          description: Updated consent record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+  /connection/status:
+    get:
+      operationId: getConnectionStatus
+      tags: [connection]
+      summary: Get the current user's linked-device status
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppConnection"
+  /connection/pairing-code:
+    post:
+      operationId: requestPairingCode
+      tags: [connection]
+      summary: Request a code to link the user's own WhatsApp device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PairingCodeInput"
+      responses:
+        "200":
+          description: Pairing code requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairingCodeResult"
+  /connection/disconnect:
+    post:
+      operationId: disconnectWhatsApp
+      tags: [connection]
+      summary: Disconnect the current user's linked device
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatsAppConnection"
+  /messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: List recent one-to-one message records
+      parameters:
+        - name: contactId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendManualMessage
+      tags: [messages]
+      summary: Send one manual message to one opted-in contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualMessageInput"
+      responses:
+        "201":
+          description: Message accepted for sending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "409":
+          description: Contact has no current consent or device is disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +303,121 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    UserProfile:
+      type: object
+      properties:
+        fullName: { type: string }
+        username: { type: string }
+        telegramUsername: { type: ["string", "null"] }
+        language: { type: string, enum: [id, en, zh] }
+      required: [fullName, username, language]
+    UserProfileUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 120 }
+        telegramUsername: { type: ["string", "null"], maxLength: 64 }
+        language: { type: string, enum: [id, en, zh] }
+    DashboardSummary:
+      type: object
+      properties:
+        connectionStatus:
+          type: string
+          enum: [disconnected, awaiting_link, connected, reconnecting, error]
+        linkedPhone: { type: ["string", "null"] }
+        totalContacts: { type: integer }
+        optedInContacts: { type: integer }
+        optedOutContacts: { type: integer }
+        messagesSent: { type: integer }
+        messagesDelivered: { type: integer }
+        messagesFailed: { type: integer }
+      required:
+        - connectionStatus
+        - totalContacts
+        - optedInContacts
+        - optedOutContacts
+        - messagesSent
+        - messagesDelivered
+        - messagesFailed
+    ActivityItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [contact_added, consent_updated, message_sent, device_connected, device_disconnected] }
+        summary: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, kind, summary, createdAt]
+    Contact:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        phone: { type: string }
+        consentStatus: { type: string, enum: [opted_in, opted_out, pending] }
+        consentSource: { type: ["string", "null"] }
+        consentedAt: { type: ["string", "null"], format: date-time }
+        optedOutAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+      required: [id, displayName, phone, consentStatus, createdAt]
+    ContactInput:
+      type: object
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        phone: { type: string, minLength: 7, maxLength: 20 }
+        consentConfirmed: { type: boolean }
+        consentSource: { type: string, minLength: 2, maxLength: 200 }
+      required: [displayName, phone, consentConfirmed, consentSource]
+    ContactUpdate:
+      type: object
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+      required: [displayName]
+    ConsentUpdate:
+      type: object
+      properties:
+        status: { type: string, enum: [opted_in, opted_out] }
+        source: { type: string, maxLength: 200 }
+      required: [status]
+    WhatsAppConnection:
+      type: object
+      properties:
+        status: { type: string, enum: [disconnected, awaiting_link, connected, reconnecting, error] }
+        linkedPhone: { type: ["string", "null"] }
+        updatedAt: { type: ["string", "null"], format: date-time }
+        message: { type: ["string", "null"] }
+      required: [status]
+    PairingCodeInput:
+      type: object
+      properties:
+        phone: { type: string, minLength: 7, maxLength: 20 }
+      required: [phone]
+    PairingCodeResult:
+      type: object
+      properties:
+        status: { type: string, enum: [awaiting_link] }
+        pairingCode: { type: string }
+        expiresInSeconds: { type: integer }
+      required: [status, pairingCode, expiresInSeconds]
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        contactId: { type: string, format: uuid }
+        contactName: { type: string }
+        phone: { type: string }
+        text: { type: string }
+        status: { type: string, enum: [queued, sent, delivered, failed] }
+        createdAt: { type: string, format: date-time }
+      required: [id, contactId, contactName, phone, text, status, createdAt]
+    ManualMessageInput:
+      type: object
+      properties:
+        contactId: { type: string, format: uuid }
+        text: { type: string, minLength: 1, maxLength: 4000 }
+      required: [contactId, text]
 
