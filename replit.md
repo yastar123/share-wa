@@ -1,15 +1,17 @@
-# [Project name]
+# ShareWa
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+ShareWa is a private, consent-first workspace for managing contacts, linking your own WhatsApp account, and sending one-to-one messages.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- The `artifacts/sharewa: web` and `artifacts/api-server: API Server` workflows run the app and API in preview.
+- `pnpm install --frozen-lockfile` — install workspace dependencies
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Replit provides PostgreSQL and Clerk Auth. `SESSION_SECRET` is required to encrypt saved WhatsApp session data.
+- Link only a WhatsApp account you own or are authorized to use. Messages are manual, one contact at a time, and require recorded consent.
 
 ## Stack
 
@@ -22,23 +24,32 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/sharewa/src/App.tsx` — landing page, authenticated pages, and client-side API flows
+- `artifacts/sharewa/src/index.css` — ShareWa visual theme and responsive layouts
+- `artifacts/api-server/src/routes/` — authenticated API routes
+- `artifacts/api-server/src/lib/whatsapp.ts` — encrypted linked-device session handling and one-to-one sending
+- `lib/api-spec/openapi.yaml` — source API contract; generated client and Zod types live in `lib/api-client-react` and `lib/api-zod`
+- `lib/db/src/schema/sharewa.ts` — database tables and consent/message records
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- All contact, message, activity, and linked-device records are scoped to the authenticated Clerk user.
+- WhatsApp credentials are encrypted before storage using `SESSION_SECRET`.
+- Contact creation requires a positive consent confirmation and a source; opt-out immediately blocks future sends.
+- Message sending is intentionally manual and limited to one opted-in contact per request.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Dashboard for connection, consent, message, and activity status.
+- Contact book with search, consent filters, permission history, opt-out, edits, and deletion.
+- One-to-one message history and composer for opted-in contacts.
+- Profile, preferred language, and WhatsApp linked-device settings.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Apply development schema changes with `pnpm --filter @workspace/db run push`; never run this against production.
+- After changing `lib/api-spec/openapi.yaml`, run the API codegen script before changing API/client code that depends on those schemas.
+- The app preview screenshot shows the public landing page; authenticated workspace pages require a signed-in Clerk session.
 
 ## Pointers
 

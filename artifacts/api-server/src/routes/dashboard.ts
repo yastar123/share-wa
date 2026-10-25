@@ -17,14 +17,27 @@ import { getWhatsAppStatus } from "../lib/whatsapp";
 const router: IRouter = Router();
 router.use(requireAuth);
 
-async function countWhere<T extends typeof contactsTable | typeof messagesTable>(
-  table: T,
-  filters: Parameters<typeof and>[number][],
-): Promise<number> {
+async function countContacts(userId: string, consentStatus?: "opted_in" | "opted_out"): Promise<number> {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(table)
-    .where(and(...filters));
+    .from(contactsTable)
+    .where(consentStatus
+      ? and(
+          eq(contactsTable.ownerUserId, userId),
+          eq(contactsTable.consentStatus, consentStatus),
+        )
+      : eq(contactsTable.ownerUserId, userId));
+  return Number(row?.count ?? 0);
+}
+
+async function countMessages(userId: string, status: "sent" | "delivered" | "failed"): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(messagesTable)
+    .where(and(
+      eq(messagesTable.ownerUserId, userId),
+      eq(messagesTable.status, status),
+    ));
   return Number(row?.count ?? 0);
 }
 
@@ -33,27 +46,12 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const [connection, totalContacts, optedInContacts, optedOutContacts, messagesSent, messagesDelivered, messagesFailed] =
     await Promise.all([
       getWhatsAppStatus(userId),
-      countWhere(contactsTable, [eq(contactsTable.ownerUserId, userId)]),
-      countWhere(contactsTable, [
-        eq(contactsTable.ownerUserId, userId),
-        eq(contactsTable.consentStatus, "opted_in"),
-      ]),
-      countWhere(contactsTable, [
-        eq(contactsTable.ownerUserId, userId),
-        eq(contactsTable.consentStatus, "opted_out"),
-      ]),
-      countWhere(messagesTable, [
-        eq(messagesTable.ownerUserId, userId),
-        eq(messagesTable.status, "sent"),
-      ]),
-      countWhere(messagesTable, [
-        eq(messagesTable.ownerUserId, userId),
-        eq(messagesTable.status, "delivered"),
-      ]),
-      countWhere(messagesTable, [
-        eq(messagesTable.ownerUserId, userId),
-        eq(messagesTable.status, "failed"),
-      ]),
+      countContacts(userId),
+      countContacts(userId, "opted_in"),
+      countContacts(userId, "opted_out"),
+      countMessages(userId, "sent"),
+      countMessages(userId, "delivered"),
+      countMessages(userId, "failed"),
     ]);
 
   res.json(
