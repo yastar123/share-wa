@@ -395,6 +395,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [language]);
 
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : language;
+  }, [language]);
+
   const value = useMemo<LanguageContextValue>(() => ({
     language,
     setLanguage,
