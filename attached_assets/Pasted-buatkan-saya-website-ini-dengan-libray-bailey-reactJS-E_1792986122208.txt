@@ -1,0 +1,415 @@
+buatkan saya website ini dengan libray bailey, reactJS, ExpressJS dan potstgreSQL
+
+•Platform pesan WhatsApp (Sharewa)
+•Semua pesan Anda dalam satu layar
+•Hubungkan perangkat
+•Jalankan pengiriman
+•Pantau hasil secara langsung (real-time)
+•Tanpa perlu berpindah-pindah aplikasi
+Tombol aksi utama: Mulai sekarang
+
+•Logo ShareWa
+•Pilihan bahasa: IN | EN | ZH
+•Tombol kembali: Beranda
+•Judul bagian: MASUK
+•Headline: Senang Anda kembali
+•Subjudul: Masuk dan lanjutkan dari tempat Anda berhenti
+•Form Nama Pengguna (dengan placeholder “Nama pengguna Anda”)
+•Form Kata Sandi (dengan placeholder “Kata sandi Anda” + ikon tampilkan/sembunyikan password)
+•Tombol utama: Masuk →
+•Link: Baru di Sharewa? Buat akun gratis
+•Teks persetujuan: Dengan masuk, Anda menyetujui Syarat & Ketentuan dan Kebijakan Privasi
+
+•Logo ShareWa
+•Pilihan bahasa: IN | EN | ZH
+•Tombol kembali: Beranda
+•Judul bagian: BUAT AKUN SAYA
+•Headline: Mari berkenalan
+•Subjudul: Isi sekali, langsung selesai. Tidak sampai satu menit.
+•Form Nama Lengkap (placeholder: Nama Anda)
+•Form Nama Pengguna (aturan: huruf kecil, angka, underscore)
+•Form Kata Sandi (minimal 6 karakter + ikon tampilkan/sembunyikan)
+•Form Kode Referral (opsional – “Punya kode teman?”)
+→ Catatan: Anda dan teman sama-sama dapat bonus
+•Kotak peringatan: Simpan baik-baik
+(Belum ada fitur pemulihan kata sandi, jadi catat dulu sebelum lanjut)
+•Bagian Satu Langkah Terakhir (verifikasi bukan robot)
+•Verifikasi Cloudflare (sedang melakukan verifikasi)
+•Checkbox: Saya setuju dengan Syarat & Ketentuan dan Kebijakan Privasi
+•Tombol utama: Buat akun saya →
+•Link: Sudah punya akun? Masuk
+
+•Logo Sharewa + avatar pengguna (A)
+•Pilihan bahasa: IN | EN | ZH
+•Tombol kembali: Kembali
+•Judul bagian: AKUN
+Headline: Pengaturan
+•Subjudul: Ubah data akunmu dan tentukan ke mana saldo dicairkan
+Bagian Data akun:
+•Nama Lengkap → ( Tulis nama lengkapmu
+•Nama Pengguna → otomastis
+(Catatan: Tidak bisa diubah setelah daftar)
+•Telegram → @ username_telegram
+(Catatan: Dipakai admin buat menghubungi kamu kalau ada kendala penarikan)
+•Kata Sandi Baru (biarkan kosong kalau tidak diganti)
+•Ulangi Kata Sandi
+•Tombol Simpan
+•Bagian Ke mana saldo dicairkan:
+•Pilihan tujuan: Bank | e-Wallet
+(Catatan: Isian dikosongkan tiap ganti tab, biar data bank dan e-wallet tidak tertukar)
+•Bank Tujuan → dropdown “Pilih bank...”
+•Nomor Rekening atau HP (contoh: 1234567890)
+•Nama Pemilik Rekening
+(Peringatan merah: Nama yang tidak sama persis bisa membuat penarikanmu ditolak)
+•Tombol Simpan tujuan pencairan
+Navigasi bawah:
+•Ringkasan
+•Nomor
+•Tarik Saldo
+•Tim
+Header:
+•Logo Sharewa
+•Pilihan bahasa: IN | EN | ZH
+•Avatar pengguna (A)
+•Tombol aksi (ikon pesawat kertas)
+
+Header:
+•Logo Sharewa
+•Pilihan bahasa: IN | EN | ZH
+•Avatar pengguna (S)
+Bagian Beranda:
+•Judul: Semua kerjamu ada di sini
+•Subjudul: Nomor yang jalan, pesan yang terkirim, saldo yang •masuk — satu halaman
+•Login sebagai: otomatis
+•Status: SEMUA NORMAL
+•Kartu Saldo Siap Tarik:
+•Saldo: Rp 0
+•Minimal tarik: Rp 20.000
+Rekening: DANA otomatis
+•Tombol Tarik saldo
+Statistik:
+•Nomor jalan → 1 / 1
+•Sisa antrean → 0
+•Pesan terkirim → 0
+•Nomor putus → 0
+•Total masuk → Rp 0
+•Sudah ditarik → Rp 0
+Bagian Sambungkan Nomor:
+•Instruksi: Pindai QR dari WhatsApp di HP kamu, nomornya langsung tersambung ke sini
+•Tombol Sambungkan nomor >
+Bagian Ajak Teman:
+•Kode referral: 60PDIR
+•Tombol Salin link
+•Link Lihat detail
+•Info komisi: Kamu dapat komisi Rp 50 dari tiap pesan yang dikirim timmu
+Statistik Tim:
+•Komisi tim → Rp 0
+•Anggota aktif → 0 / 0
+•Pesan tim → 0
+•Nomor tim → 0
+Bagian Bantuan:
+•Teks: Ada yang aneh? Kalau ada yang error atau bikin bingung, ceritakan ke kami lewat Telegram. Sertakan tangkapan layar biar cepat ketemu.
+•Tombol Kirim lewat Telegram
+Navigasi bawah:
+•Ringkasan (aktif)
+•Nomor
+•Tarik Saldo
+•Tim
+
+Header:
+•Logo Sharewa
+•Pilihan bahasa: IN | EN | ZH
+•Avatar pengguna (S)
+Bagian Pengirim:
+•Judul: Nomor kamu
+•Subjudul: Sambungkan nomor, atur jeda kirim, jalankan atau setop kapan saja
+Kartu Nomor Menunggu Dikirim:
+•Jumlah: 0
+•Keterangan: siap diproses saat blast berjalan
+•Slot perangkat: 0/4
+•Tombol + Tambah Perangkat
+Status Kosong:
+•Ikon dokumen
+•Teks: Belum ada nomor tersambung
+•Keterangan: Sambungkan satu nomor WhatsApp dulu, baru pengiriman bisa dijalankan
+Navigasi bawah:
+•Ringkasan
+•Nomor (aktif)
+•Tarik Saldo
+•Tim
+
+Header:
+•Logo Sharewa
+•Pilihan bahasa: IN | EN | ZH
+•Avatar pengguna (S)
+Bagian Uangmu:
+•Judul: Cairkan hasil kerjamu
+•Subjudul: Pindahkan saldo dari nomor-nomormu ke rekening bank atau e-wallet
+Info Jam Pencairan:
+•Jam pencairan: 07.00 – 22.00
+•Keterangan: Pengajuan di luar jam itu tetap boleh — diprosesnya besok
+•Kartu Saldo Kamu:
+•Saldo: Rp 0
+•Progress: Menuju batas tarik → Mulai Rp 100.000
+•Peringatan: Tinggal Rp 100.000 lagi sebelum bisa ditarik
+•Bagian Cairkan Sekarang:
+Nominal Cepat: 100k | 200k | 300k | 600k | 1M | 2M
+•Input manual: Atau tulis sendiri (Rp 0)
+Tombol Cairkan
+•Catatan: Diproses 07.00 – 22.00, di luar jam itu besok
+•Bagian Pencairan Sebelumnya:
+
+Berikut daftar elemen/fitur yang ada di dalam gambar tersebut:
+
+Bagian Pencairan Sebelumnya:
+- Judul: PENCAIRAN SEBELUMNYA
+- Filter status:
+- Diproses (aktif)
+- Cair
+- Ditolak
+- Dibatalkan
+
+Status Kosong:
+- Ikon dokumen
+- Teks: Masih kosong di sini
+- Keterangan: Belum ada pencairan berstatus Diproses
+Navigasi bawah:
+- Ringkasan
+- Nomor
+• Tarik Saldo(aktif)
+- Tim
+
+
+Header:
+•Logo Sharewa
+•Pilihan bahasa: IN | EN | ZH
+•Avatar pengguna (S)
+Bagian Ajak Teman:
+•Judul: Ajak teman, dapat komisi
+•Subjudul: Tiap orang yang kamu ajak jalan dengan nomornya sendiri, dan kamu dapat bagian dari tiap pesan mereka
+Kartu Kode Ajakanmu:
+•Kode: 60PDIR
+Tombol Salin kode
+Tombol Bagikan
+•Link:
+•Info komisi: Kamu dapat komisi Rp 50 dari tiap pesan berhasil yang dikirim timmu
+•Statistik Tim:
+Anggota tim → 0
+Pesan berhasil → 0
+Komisi masuk → Rp 0
+Bagian Siapa saja yang gabung:
+•Filter: Terbaru (dropdown)
+•Status kosong: Belum ada yang gabung. Sebar linkmu dulu.
+Navigasi bawah:
+•Ringkasan
+•Nomor
+•Tarik Saldo
+•Tim (aktif)
+
+
+Header:
+Logo Sharewa
+Pilihan bahasa: IN | EN | ZH
+Avatar pengguna (S)
+Bagian Pengirim:
+Judul: Nomor kamu
+Subjudul: Sambungkan nomor, atur jeda kirim, jalankan atau setop kapan saja
+Kartu Nomor Menunggu Dikirim:
+Jumlah: 0
+Keterangan: siap diproses saat blast berjalan
+Slot perangkat: 1/4
+Tombol + Tambah Perangkat
+Bagian Atur semua nomor (Sekali Atur):
+Judul: Atur semua nomor
+Keterangan: Satu pengaturan untuk semua nomor sekaligus. Makin lama jedanya, makin kecil risiko kena blokir
+Daftar Tujuan → dropdown “Pilih daftar tujuan...”
+Jeda Antar Pesan → 30 detik (wajar)
+Info status Wajar:
+Jeda paling mirip orang mengetik. Pilihan aman untuk kirim tiap hari.
+Seberapa aman sebenarnya tetap bergantung pada umur dan riwayat pemakaian nomormu.
+Checkbox persetujuan:
+Saya sudah memastikan nama dan foto profil semua nomor WhatsApp saya sesuai Aturan Profil. Kalau saat diaudit ternyata melanggar, saya bersedia saldo saya hangus dan akun saya diblokir.
+Tombol Jalankan semua
+Tombol Setop semua
+Navigasi bawah:
+Ringkasan
+Nomor (aktif)
+Tarik Saldo
+Tim
+
+Header
+Logo & nama aplikasi: Sharewa
+Pilihan bahasa: IN | EN | ZH
+Tombol profil/akun (ikon C)
+Bagian Utama: PENGIRIM
+Judul: Nomor kamu
+Deskripsi: Sambungkan nomor, atur jeda kirim, jalankan atau setop kapan saja.
+Status Nomor
+NOMOR MENUNGGU DIKIRIM: 0
+Keterangan: siap diproses saat blast berjalan
+Indikator progres: 1/4
+Tombol: + Tambah Perangkat
+Pengaturan Massal
+Atur semua nomor (label: SEKALI ATUR)
+Deskripsi: Satu pengaturan untuk semua nomor sekaligus. Makin lama jedanya, makin kecil risiko kena blokir.
+Daftar Tujuan
+Dropdown negara: HK +82
+Kolom pencarian: Cari...
+Daftar negara/harga:
+HK +82 → Rp 1.050 (sudah terpilih ✓)
+Hungaria +36 → Rp 1.050
+Peringatan Keamanan
+Teks peringatan tentang risiko tergantung pada pemilik nomor WhatsApp.
+Checklist & Kontrol
+Checkbox pernyataan:
+Saya sudah memastikan nama dan foto profil semua nomor WhatsApp saya sesuai Aturan Profil. Kalau saat diaudit ternyata melanggar, saya bersedia saldo saya hangus dan akun saya diblokir.
+Tombol utama: ▶️ Jalankan semua
+Checkbox: Setop se
+
+Header
+Logo & nama aplikasi: Sharewa
+Pilihan bahasa: IN | EN | ZH
+Tombol profil/akun (C)
+Bagian: PENGIRIM
+Judul: Nomor kamu
+Deskripsi: Sambungkan nomor, atur jeda kirim, jalankan atau setop kapan saja.
+Status Nomor
+NOMOR MENUNGGU DIKIRIM: 0
+Keterangan: siap diproses saat blast berjalan
+Indikator: 1/4
+Tombol: + Tambah Perangkat
+Pengaturan Massal
+Atur semua nomor (label: SEKALI ATUR)
+Deskripsi: Satu pengaturan untuk semua nomor sekaligus. Makin lama jedanya, makin kecil risiko kena blokir.
+Daftar Tujuan
+Dropdown negara: HK +82
+Jeda Antar Pesan
+Label: JEDA ANTAR PESAN
+Pilihan yang tersedia:
+1 detik (paling ekstrem)
+3 detik (nekat)
+5 detik ← sedang dipilih ✓
+10 detik
+15 detik
+15 detik
+20 detik
+30 detik (wajar)
+45 detik
+60 detik (aman)
+Tombol Aksi
+▶️ Jalankan semua
+☐ Setop semua
+Navigasi Bawah
+Ringkasan
+Nomor (aktif)
+Tarik Saldo
+Tim
+
+1. Menghubungkan & Mengelola Nomor WhatsApp
+Pengguna bisa menambahkan nomor WhatsApp (via kode verifikasi atau scan QR).
+Mendukung beberapa slot/perangkat (terlihat 1/4 slot).
+Setiap nomor yang terhubung bisa diatur secara individual atau massal (atur semua nomor sekaligus).
+2. Pengiriman Pesan Massal (Blast)
+Memilih daftar tujuan (kontak berdasarkan negara/kode, contoh: HK +82, Hungaria +36).
+Mengatur jeda antar pesan (delay) dengan tingkat risiko yang berbeda:
+30 detik (wajar/aman)
+15–20 detik
+5–10 detik (berisiko)
+1–3 detik (sangat ekstrem, hampir pasti kena anti-spam Meta)
+Tombol “Jalankan semua” atau “Jalankan” untuk memulai pengiriman.
+Ada checkbox konfirmasi bahwa profil nomor sudah sesuai aturan (nama & foto) agar tidak langsung diblokir.
+3. Sistem Saldo & Pendapatan
+Dashboard menampilkan Saldo Siap Tarik (contoh: Rp 2.100).
+Pendapatan berasal dari:
+Pesan yang berhasil dikirim.
+Komisi referral (contoh: Rp 50 per pesan yang dikirim teman yang diajak).
+Ada tombol tarik saldo (minimal penarikan Rp 100.000) setelah rekening diisi.
+Statistik lengkap: pesan terkirim, berhasil, gagal, total masuk, sudah ditarik, slot aktif, rata-rata kecepatan, dll.
+4. Fitur Pendukung Lain
+Kode referral untuk mengajak teman.
+Ringkasan performa blast per kategori/negara.
+Notifikasi dan pengaturan profil.
+Kesimpulan kegunaan:
+Platform ini dirancang untuk orang yang ingin menggunakan nomor WhatsApp mereka sebagai “mesin pengirim pesan massal” ke daftar nomor tertentu (biasanya untuk promosi, marketing, atau aktivitas serupa), lalu mendapat bayaran berdasarkan jumlah pesan yang berhasil terkirim. Semakin banyak nomor yang dihubungkan dan semakin agresif pengaturan delay-nya, semakin tinggi potensi volume kirim, tetapi juga semakin tinggi risiko nomor diblokir oleh WhatsApp/Meta.
+
+•Kartu Nomor (Slot 1):
+•Nomor: otomatis
+•Nama: Security support
+•Label: SLOT 1
+•Status: SIAP, BELUM JALAN
+•Saldo nomor: Rp 0
+•Tombol hapus (ikon tempat sampah)
+•Jeda Antar Pesan: 30 detik (wajar)
+•Checkbox: Batas Kirim Per Nomor
+Statistik nomor:
+•Dikirim → 0
+•Berhasil → 0
+•Gagal → 0
+•Tombol Jalankan
+Ringkasan Performa Blast:
+•Slot Aktif → 0
+•Sukses → 0 (Sepanjang waktu)
+•Gagal → 0 (dengan link Lihat detail)
+•Partisipasi → 0 campaign (0 pesan diproses)
+•Nomor Tertaut → 1 unik (dengan link Lihat daftar)
+•Rata-rata Speed → 0 dtk/pesan
+Navigasi bawah:
+•Ringkasan
+•Nomor (aktif)
+•Tarik Saldo
+•Tim
+
+Judul langkah
+- LANGKAH 1 DARI 2
+
+Judul fitur
+- Sambungkan nomor
+
+Tombol tutup
+- Ikon X di pojok kanan atas
+
+Teks instruksi
+- Masukkan nomor WhatsApp yang mau kamu sambungkan. Kodenya keluar setelah ini.
+
+Label input
+- NOMOR WHATSAPP KAMU
+
+Kolom input nomor
+- Placeholder: Contoh: +62 812-3456-7890
+
+Tombol utama
+- Minta kode (berwarna hijau)
+
+Pembatas
+- Teks atau
+
+Tombol alternatif
+- Pindai QR (dengan ikon QR code)
+
+Fitur ini digunakan untuk menghubungkan nomor WhatsApp, baik dengan meminta kode verifikasi maupun dengan memindai QR code.
+
+Judul dialog
+Siap kirim?
+Tombol tutup
+Ikon X di pojok kanan atas
+Pertanyaan pilihan daftar
+Kirim ke daftar mana?
+Dropdown kategori kontak
+-- Pilih Kategori Kontak --
+Label nomor
+Nomor:
+Informasi kontak yang dipilih
+Foto profil
+Nomor: +923350529411
+Nama: Security support
+Checkbox pernyataan
+Teks:
+Saya sudah memastikan nama dan foto profil nomor ini sesuai Aturan Profil. Kalau saat diaudit ternyata melanggar, saya bersedia saldo saya hangus dan akun saya diblokir.
+Tombol aksi
+Batal
+Jalankan (dengan ikon play ▶️)
+Fitur ini adalah konfirmasi sebelum mengirim pesan ke daftar kontak, lengkap dengan pernyataan tanggung jawab terkait aturan profil
+
+
+
+unuk contoh tampilam seperti web ini https://sharewa.me/
