@@ -1,1 +1,2 @@
 - [OpenAPI generator runtime](node-codegen-runtime.md) — if codegen fails on a missing built-in JavaScript API, check the active Node version first.
+- [Public demo access](public-demo-access.md) — keep login-page demo identities isolated from real Clerk accounts, database records, and API actions.

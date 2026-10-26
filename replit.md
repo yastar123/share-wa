@@ -45,6 +45,7 @@ ShareWa is a private, consent-first workspace for managing contacts, linking you
 - Contact book with search, consent filters, permission history, opt-out, edits, and deletion.
 - One-to-one message history and composer for opted-in contacts.
 - Profile, preferred language, and WhatsApp linked-device settings.
+- Login shows public example credentials for read-only admin and user previews; demo routes use fictional data only and never access Clerk or the API.
 
 ## Gotchas
 

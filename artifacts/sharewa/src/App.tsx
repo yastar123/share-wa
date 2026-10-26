@@ -25,6 +25,7 @@ import {
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import AdminPage from '@/pages/admin';
+import { DemoAccessPanel, DemoWorkspace } from '@/pages/demo';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider, translate, translateActivitySummary, useAppLanguage, type AppLanguage } from '@/lib/i18n';
@@ -386,7 +387,7 @@ function SettingsPage() {
 }
 
 function SignInPage() {
-  return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}><div><Link href="/" className="brand" style={{ justifyContent: 'center', marginBottom: 22 }}><Brand /></Link><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div></main>;
+  return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}><div className="sign-in-layout"><div className="sign-in-main"><Link href="/" className="brand" style={{ justifyContent: 'center' }}><Brand /></Link><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div><DemoAccessPanel /></div></main>;
 }
 function SignUpPage() {
   return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}><div><Link href="/" className="brand" style={{ justifyContent: 'center', marginBottom: 22 }}><Brand /></Link><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div></main>;
@@ -428,6 +429,8 @@ function ClerkRoutes() {
       <Route path="/" component={HomeRedirect} />
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/demo/admin">{() => <DemoWorkspace role="admin" />}</Route>
+      <Route path="/demo/user">{() => <DemoWorkspace role="user" />}</Route>
       <Route path="/dashboard">{() => <ProtectedPage path="/dashboard"><DashboardPage /></ProtectedPage>}</Route>
       <Route path="/contacts">{() => <ProtectedPage path="/contacts"><ContactsPage /></ProtectedPage>}</Route>
       <Route path="/messages">{() => <ProtectedPage path="/messages"><MessagesPage /></ProtectedPage>}</Route>
