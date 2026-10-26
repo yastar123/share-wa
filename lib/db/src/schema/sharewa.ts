@@ -32,12 +32,19 @@ export const messageStatusEnum = pgEnum("sharewa_message_status", [
   "failed",
 ]);
 
+export const accountStatusEnum = pgEnum("sharewa_account_status", [
+  "active",
+  "suspended",
+  "deletion_pending",
+]);
+
 export const userProfilesTable = pgTable("sharewa_user_profiles", {
   clerkUserId: text("clerk_user_id").primaryKey(),
   fullName: text("full_name").notNull().default("Pengguna baru"),
   username: text("username").notNull().unique(),
   telegramUsername: text("telegram_username"),
   language: text("language").notNull().default("id"),
+  accountStatus: accountStatusEnum("account_status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

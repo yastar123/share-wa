@@ -312,6 +312,8 @@ export const GetAdminMeResponse = zod.object({
 export const GetAdminOverviewResponse = zod.object({
   "totalUsers": zod.number().int(),
   "totalAdmins": zod.number().int(),
+  "suspendedUsers": zod.number().int(),
+  "deletionPendingUsers": zod.number().int(),
   "totalContacts": zod.number().int(),
   "optedInContacts": zod.number().int(),
   "optedOutContacts": zod.number().int(),
@@ -361,6 +363,7 @@ export const ListAdminUsersResponse = zod.object({
   "username": zod.string(),
   "language": zod.enum(['id', 'en', 'zh']),
   "isAdmin": zod.boolean(),
+  "accountStatus": zod.enum(['active', 'suspended', 'deletion_pending']),
   "connectionStatus": zod.enum(['disconnected', 'awaiting_link', 'connected', 'reconnecting', 'error']),
   "createdAt": zod.coerce.date()
 })),
@@ -384,6 +387,225 @@ export const UpdateAdminUserRoleBody = zod.object({
 export const UpdateAdminUserRoleResponse = zod.object({
   "userId": zod.string(),
   "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary Suspend or reactivate an app account
+ */
+export const UpdateAdminUserStatusParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const UpdateAdminUserStatusBody = zod.object({
+  "status": zod.enum(['active', 'suspended'])
+})
+
+export const UpdateAdminUserStatusResponse = zod.object({
+  "userId": zod.string(),
+  "status": zod.enum(['active', 'suspended'])
+})
+
+
+/**
+ * @summary Permanently delete an app account and its stored data
+ */
+export const DeleteAdminUserParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const DeleteAdminUserResponse = zod.object({
+  "userId": zod.string(),
+  "status": zod.enum(['deleted', 'deletion_pending'])
+})
+
+
+/**
+ * @summary List contacts across accounts without exposing full phone numbers
+ */
+export const listAdminContactsQueryLimitDefault = 25;
+export const listAdminContactsQueryLimitMax = 100;
+
+export const listAdminContactsQueryOffsetDefault = 0;
+export const listAdminContactsQueryOffsetMin = 0;
+
+export const listAdminContactsQuerySearchMax = 100;
+
+export const listAdminContactsQueryConsentStatusDefault = `all`;
+
+export const ListAdminContactsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listAdminContactsQueryLimitMax).default(listAdminContactsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminContactsQueryOffsetMin).default(listAdminContactsQueryOffsetDefault),
+  "search": zod.coerce.string().max(listAdminContactsQuerySearchMax).optional(),
+  "consentStatus": zod.enum(['all', 'opted_in', 'opted_out', 'pending']).default(listAdminContactsQueryConsentStatusDefault)
+})
+
+export const ListAdminContactsResponse = zod.object({
+  "contacts": zod.array(zod.object({
+  "contactId": zod.string().uuid(),
+  "ownerUserId": zod.string(),
+  "ownerUsername": zod.string(),
+  "displayName": zod.string(),
+  "phoneMasked": zod.string(),
+  "consentStatus": zod.enum(['opted_in', 'opted_out', 'pending']),
+  "consentSource": zod.string().nullable(),
+  "consentedAt": zod.coerce.date().nullable(),
+  "optedOutAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.number().int(),
+  "limit": zod.number().int(),
+  "offset": zod.number().int()
+})
+
+
+/**
+ * @summary Update contact name or consent status
+ */
+export const UpdateAdminContactParams = zod.object({
+  "contactId": zod.coerce.string().uuid()
+})
+
+export const updateAdminContactBodyDisplayNameMax = 120;
+
+export const updateAdminContactBodyConsentSourceMin = 2;
+export const updateAdminContactBodyConsentSourceMax = 200;
+
+
+
+export const UpdateAdminContactBody = zod.object({
+  "displayName": zod.string().min(1).max(updateAdminContactBodyDisplayNameMax).optional(),
+  "consentStatus": zod.enum(['opted_in', 'opted_out', 'pending']).optional(),
+  "consentSource": zod.string().min(updateAdminContactBodyConsentSourceMin).max(updateAdminContactBodyConsentSourceMax).optional()
+})
+
+export const UpdateAdminContactResponse = zod.object({
+  "contactId": zod.string().uuid(),
+  "ownerUserId": zod.string(),
+  "ownerUsername": zod.string(),
+  "displayName": zod.string(),
+  "phoneMasked": zod.string(),
+  "consentStatus": zod.enum(['opted_in', 'opted_out', 'pending']),
+  "consentSource": zod.string().nullable(),
+  "consentedAt": zod.coerce.date().nullable(),
+  "optedOutAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a contact and its stored message history
+ */
+export const DeleteAdminContactParams = zod.object({
+  "contactId": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminContactResponse = zod.void()
+
+
+/**
+ * @summary Review stored message history across accounts
+ */
+export const listAdminMessagesQueryLimitDefault = 20;
+export const listAdminMessagesQueryLimitMax = 50;
+
+export const listAdminMessagesQueryOffsetDefault = 0;
+export const listAdminMessagesQueryOffsetMin = 0;
+
+export const listAdminMessagesQuerySearchMax = 100;
+
+export const listAdminMessagesQueryStatusDefault = `all`;
+
+export const ListAdminMessagesQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listAdminMessagesQueryLimitMax).default(listAdminMessagesQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminMessagesQueryOffsetMin).default(listAdminMessagesQueryOffsetDefault),
+  "search": zod.coerce.string().max(listAdminMessagesQuerySearchMax).optional(),
+  "ownerUserId": zod.coerce.string().optional(),
+  "status": zod.enum(['all', 'queued', 'sent', 'delivered', 'failed']).default(listAdminMessagesQueryStatusDefault)
+})
+
+export const ListAdminMessagesResponse = zod.object({
+  "messages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "ownerUserId": zod.string(),
+  "ownerUsername": zod.string(),
+  "contactId": zod.string().uuid(),
+  "contactName": zod.string(),
+  "phoneMasked": zod.string(),
+  "text": zod.string(),
+  "status": zod.enum(['queued', 'sent', 'delivered', 'failed']),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.number().int(),
+  "limit": zod.number().int(),
+  "offset": zod.number().int()
+})
+
+
+/**
+ * @summary Send one message as an account to its opted-in contact
+ */
+export const sendAdminMessageBodyTextMax = 4000;
+
+
+
+export const SendAdminMessageBody = zod.object({
+  "ownerUserId": zod.string(),
+  "contactId": zod.string().uuid(),
+  "text": zod.string().min(1).max(sendAdminMessageBodyTextMax)
+})
+
+export const SendAdminMessageResponse = zod.object({
+  "id": zod.string().uuid(),
+  "ownerUserId": zod.string(),
+  "contactId": zod.string().uuid(),
+  "status": zod.enum(['sent', 'failed']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a stored message record without recalling the delivered message
+ */
+export const DeleteAdminMessageParams = zod.object({
+  "messageId": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminMessageResponse = zod.void()
+
+
+/**
+ * @summary Get global outbound messaging settings
+ */
+export const GetAdminSystemSettingsResponse = zod.object({
+  "outboundMessagingEnabled": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Pause or resume all outbound WhatsApp messaging
+ */
+export const UpdateAdminSystemSettingsBody = zod.object({
+  "outboundMessagingEnabled": zod.boolean()
+})
+
+export const UpdateAdminSystemSettingsResponse = zod.object({
+  "outboundMessagingEnabled": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Disconnect a user's WhatsApp session without returning credentials
+ */
+export const DisconnectAdminUserWhatsAppParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const DisconnectAdminUserWhatsAppResponse = zod.object({
+  "userId": zod.string(),
+  "status": zod.enum(['disconnected'])
 })
 
 

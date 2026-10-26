@@ -252,6 +252,8 @@ export interface AdminActivityItem {
 export interface AdminOverview {
   totalUsers: number;
   totalAdmins: number;
+  suspendedUsers: number;
+  deletionPendingUsers: number;
   totalContacts: number;
   optedInContacts: number;
   optedOutContacts: number;
@@ -273,6 +275,15 @@ export const AdminUserLanguage = {
   zh: 'zh',
 } as const;
 
+export type AdminUserAccountStatus = typeof AdminUserAccountStatus[keyof typeof AdminUserAccountStatus];
+
+
+export const AdminUserAccountStatus = {
+  active: 'active',
+  suspended: 'suspended',
+  deletion_pending: 'deletion_pending',
+} as const;
+
 export type AdminUserConnectionStatus = typeof AdminUserConnectionStatus[keyof typeof AdminUserConnectionStatus];
 
 
@@ -292,6 +303,7 @@ export interface AdminUser {
   username: string;
   language: AdminUserLanguage;
   isAdmin: boolean;
+  accountStatus: AdminUserAccountStatus;
   connectionStatus: AdminUserConnectionStatus;
   createdAt: string;
 }
@@ -310,6 +322,176 @@ export interface AdminRoleUpdate {
 export interface AdminRoleUpdateResult {
   userId: string;
   isAdmin: boolean;
+}
+
+export type AdminAccountStatusUpdateStatus = typeof AdminAccountStatusUpdateStatus[keyof typeof AdminAccountStatusUpdateStatus];
+
+
+export const AdminAccountStatusUpdateStatus = {
+  active: 'active',
+  suspended: 'suspended',
+} as const;
+
+export interface AdminAccountStatusUpdate {
+  status: AdminAccountStatusUpdateStatus;
+}
+
+export type AdminAccountStatusResultStatus = typeof AdminAccountStatusResultStatus[keyof typeof AdminAccountStatusResultStatus];
+
+
+export const AdminAccountStatusResultStatus = {
+  active: 'active',
+  suspended: 'suspended',
+} as const;
+
+export interface AdminAccountStatusResult {
+  userId: string;
+  status: AdminAccountStatusResultStatus;
+}
+
+export type AdminUserDeleteResultStatus = typeof AdminUserDeleteResultStatus[keyof typeof AdminUserDeleteResultStatus];
+
+
+export const AdminUserDeleteResultStatus = {
+  deleted: 'deleted',
+  deletion_pending: 'deletion_pending',
+} as const;
+
+export interface AdminUserDeleteResult {
+  userId: string;
+  status: AdminUserDeleteResultStatus;
+}
+
+export type AdminContactConsentStatus = typeof AdminContactConsentStatus[keyof typeof AdminContactConsentStatus];
+
+
+export const AdminContactConsentStatus = {
+  opted_in: 'opted_in',
+  opted_out: 'opted_out',
+  pending: 'pending',
+} as const;
+
+export interface AdminContact {
+  contactId: string;
+  ownerUserId: string;
+  ownerUsername: string;
+  displayName: string;
+  phoneMasked: string;
+  consentStatus: AdminContactConsentStatus;
+  /** @nullable */
+  consentSource: string | null;
+  /** @nullable */
+  consentedAt: string | null;
+  /** @nullable */
+  optedOutAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminContactsPage {
+  contacts: AdminContact[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type AdminContactUpdateConsentStatus = typeof AdminContactUpdateConsentStatus[keyof typeof AdminContactUpdateConsentStatus];
+
+
+export const AdminContactUpdateConsentStatus = {
+  opted_in: 'opted_in',
+  opted_out: 'opted_out',
+  pending: 'pending',
+} as const;
+
+export interface AdminContactUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  displayName?: string;
+  consentStatus?: AdminContactUpdateConsentStatus;
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  consentSource?: string;
+}
+
+export type AdminMessageStatus = typeof AdminMessageStatus[keyof typeof AdminMessageStatus];
+
+
+export const AdminMessageStatus = {
+  queued: 'queued',
+  sent: 'sent',
+  delivered: 'delivered',
+  failed: 'failed',
+} as const;
+
+export interface AdminMessage {
+  id: string;
+  ownerUserId: string;
+  ownerUsername: string;
+  contactId: string;
+  contactName: string;
+  phoneMasked: string;
+  text: string;
+  status: AdminMessageStatus;
+  createdAt: string;
+}
+
+export interface AdminMessagesPage {
+  messages: AdminMessage[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminMessageSend {
+  ownerUserId: string;
+  contactId: string;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  text: string;
+}
+
+export type AdminMessageSendResultStatus = typeof AdminMessageSendResultStatus[keyof typeof AdminMessageSendResultStatus];
+
+
+export const AdminMessageSendResultStatus = {
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export interface AdminMessageSendResult {
+  id: string;
+  ownerUserId: string;
+  contactId: string;
+  status: AdminMessageSendResultStatus;
+  createdAt: string;
+}
+
+export interface AdminSystemSettings {
+  outboundMessagingEnabled: boolean;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export interface AdminSystemSettingsUpdate {
+  outboundMessagingEnabled: boolean;
+}
+
+export type AdminConnectionActionResultStatus = typeof AdminConnectionActionResultStatus[keyof typeof AdminConnectionActionResultStatus];
+
+
+export const AdminConnectionActionResultStatus = {
+  disconnected: 'disconnected',
+} as const;
+
+export interface AdminConnectionActionResult {
+  userId: string;
+  status: AdminConnectionActionResultStatus;
 }
 
 export type GetDashboardActivityParams = {
@@ -358,4 +540,60 @@ limit?: number;
  */
 offset?: number;
 };
+
+export type ListAdminContactsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+/**
+ * @maxLength 100
+ */
+search?: string;
+consentStatus?: ListAdminContactsConsentStatus;
+};
+
+export type ListAdminContactsConsentStatus = typeof ListAdminContactsConsentStatus[keyof typeof ListAdminContactsConsentStatus];
+
+
+export const ListAdminContactsConsentStatus = {
+  all: 'all',
+  opted_in: 'opted_in',
+  opted_out: 'opted_out',
+  pending: 'pending',
+} as const;
+
+export type ListAdminMessagesParams = {
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+/**
+ * @maxLength 100
+ */
+search?: string;
+ownerUserId?: string;
+status?: ListAdminMessagesStatus;
+};
+
+export type ListAdminMessagesStatus = typeof ListAdminMessagesStatus[keyof typeof ListAdminMessagesStatus];
+
+
+export const ListAdminMessagesStatus = {
+  all: 'all',
+  queued: 'queued',
+  sent: 'sent',
+  delivered: 'delivered',
+  failed: 'failed',
+} as const;
 

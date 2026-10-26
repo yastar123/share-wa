@@ -12,10 +12,20 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     }
 
     const [existing] = await db
-      .select({ clerkUserId: userProfilesTable.clerkUserId })
+      .select({
+        clerkUserId: userProfilesTable.clerkUserId,
+        accountStatus: userProfilesTable.accountStatus,
+      })
       .from(userProfilesTable)
       .where(eq(userProfilesTable.clerkUserId, userId))
       .limit(1);
+
+    if (existing && existing.accountStatus !== "active") {
+      res.status(403).json({
+        error: "Akun ini sedang dinonaktifkan. Hubungi administrator.",
+      });
+      return;
+    }
 
     if (!existing) {
       const safeSuffix = userId

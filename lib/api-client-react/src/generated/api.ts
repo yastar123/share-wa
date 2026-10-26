@@ -21,10 +21,22 @@ import type {
 
 import type {
   ActivityItem,
+  AdminAccountStatusResult,
+  AdminAccountStatusUpdate,
+  AdminConnectionActionResult,
+  AdminContact,
+  AdminContactUpdate,
+  AdminContactsPage,
   AdminMe,
+  AdminMessageSend,
+  AdminMessageSendResult,
+  AdminMessagesPage,
   AdminOverview,
   AdminRoleUpdate,
   AdminRoleUpdateResult,
+  AdminSystemSettings,
+  AdminSystemSettingsUpdate,
+  AdminUserDeleteResult,
   AdminUsersPage,
   ConsentUpdate,
   Contact,
@@ -34,6 +46,8 @@ import type {
   Error,
   GetDashboardActivityParams,
   HealthStatus,
+  ListAdminContactsParams,
+  ListAdminMessagesParams,
   ListAdminUsersParams,
   ListContactsParams,
   ListMessagesParams,
@@ -1637,5 +1651,900 @@ export const useUpdateAdminUserRole = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getUpdateAdminUserRoleMutationOptions(options));
+    }
+
+export const getUpdateAdminUserStatusUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/users/${userId}/status`
+}
+
+/**
+ * @summary Suspend or reactivate an app account
+ */
+export const updateAdminUserStatus = async (userId: string,
+    adminAccountStatusUpdate: AdminAccountStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminAccountStatusResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminAccountStatusResult>(getUpdateAdminUserStatusUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminAccountStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminUserStatusMutationKey = () => ['updateAdminUserStatus'] as const;
+
+export const getUpdateAdminUserStatusMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminUserStatus>>, TError,UpdateAdminUserStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminUserStatus>>, TError,UpdateAdminUserStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminUserStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminUserStatus>>, UpdateAdminUserStatusMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateAdminUserStatus(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminUserStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminUserStatus>>>
+    export type UpdateAdminUserStatusMutationBody = BodyType<AdminAccountStatusUpdate>
+    export type UpdateAdminUserStatusMutationError = ErrorType<Error>
+    export type UpdateAdminUserStatusMutationVariables = {userId: string;data: BodyType<AdminAccountStatusUpdate>}
+
+    /**
+ * @summary Suspend or reactivate an app account
+ */
+export const useUpdateAdminUserStatus = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminUserStatus>>, TError,UpdateAdminUserStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminUserStatus>>,
+        TError,
+        UpdateAdminUserStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminUserStatusMutationOptions(options));
+    }
+
+export const getDeleteAdminUserUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/users/${userId}`
+}
+
+/**
+ * @summary Permanently delete an app account and its stored data
+ */
+export const deleteAdminUser = async (userId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminUserDeleteResult> => {
+
+  return customFetch<AdminUserDeleteResult>(getDeleteAdminUserUrl(userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminUserMutationKey = () => ['deleteAdminUser'] as const;
+
+export const getDeleteAdminUserMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminUser>>, TError,DeleteAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminUser>>, TError,DeleteAdminUserMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminUser>>, DeleteAdminUserMutationVariables> = (props) => {
+          const {userId} = props ?? {};
+
+          return  deleteAdminUser(userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminUserMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminUser>>>
+
+    export type DeleteAdminUserMutationError = ErrorType<Error>
+    export type DeleteAdminUserMutationVariables = {userId: string}
+
+    /**
+ * @summary Permanently delete an app account and its stored data
+ */
+export const useDeleteAdminUser = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminUser>>, TError,DeleteAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminUser>>,
+        TError,
+        DeleteAdminUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminUserMutationOptions(options));
+    }
+
+export const getListAdminContactsUrl = (params?: ListAdminContactsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/contacts?${stringifiedParams}` : `/api/admin/contacts`
+}
+
+/**
+ * @summary List contacts across accounts without exposing full phone numbers
+ */
+export const listAdminContacts = async (params?: ListAdminContactsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminContactsPage> => {
+
+  return customFetch<AdminContactsPage>(getListAdminContactsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminContactsQueryKey = (params?: ListAdminContactsParams,) => {
+    return [
+    `/api/admin/contacts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminContactsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminContacts>>, TError = ErrorType<Error>>(params?: ListAdminContactsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContacts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminContactsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminContacts>>> = ({ signal }) => listAdminContacts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminContacts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminContactsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminContacts>>>
+export type ListAdminContactsQueryError = ErrorType<Error>
+
+
+/**
+ * @summary List contacts across accounts without exposing full phone numbers
+ */
+
+export function useListAdminContacts<TData = Awaited<ReturnType<typeof listAdminContacts>>, TError = ErrorType<Error>>(
+ params?: ListAdminContactsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContacts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminContactsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminContactUrl = (contactId: string,) => {
+
+
+
+
+  return `/api/admin/contacts/${contactId}`
+}
+
+/**
+ * @summary Update contact name or consent status
+ */
+export const updateAdminContact = async (contactId: string,
+    adminContactUpdate: AdminContactUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminContact> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminContact>(getUpdateAdminContactUrl(contactId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminContactUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminContactMutationKey = () => ['updateAdminContact'] as const;
+
+export const getUpdateAdminContactMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminContact>>, TError,UpdateAdminContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminContact>>, TError,UpdateAdminContactMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminContactMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminContact>>, UpdateAdminContactMutationVariables> = (props) => {
+          const {contactId,data} = props ?? {};
+
+          return  updateAdminContact(contactId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminContactMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminContact>>>
+    export type UpdateAdminContactMutationBody = BodyType<AdminContactUpdate>
+    export type UpdateAdminContactMutationError = ErrorType<Error>
+    export type UpdateAdminContactMutationVariables = {contactId: string;data: BodyType<AdminContactUpdate>}
+
+    /**
+ * @summary Update contact name or consent status
+ */
+export const useUpdateAdminContact = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminContact>>, TError,UpdateAdminContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminContact>>,
+        TError,
+        UpdateAdminContactMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminContactMutationOptions(options));
+    }
+
+export const getDeleteAdminContactUrl = (contactId: string,) => {
+
+
+
+
+  return `/api/admin/contacts/${contactId}`
+}
+
+/**
+ * @summary Delete a contact and its stored message history
+ */
+export const deleteAdminContact = async (contactId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminContactUrl(contactId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminContactMutationKey = () => ['deleteAdminContact'] as const;
+
+export const getDeleteAdminContactMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminContact>>, TError,DeleteAdminContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminContact>>, TError,DeleteAdminContactMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminContactMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminContact>>, DeleteAdminContactMutationVariables> = (props) => {
+          const {contactId} = props ?? {};
+
+          return  deleteAdminContact(contactId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminContactMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminContact>>>
+
+    export type DeleteAdminContactMutationError = ErrorType<Error>
+    export type DeleteAdminContactMutationVariables = {contactId: string}
+
+    /**
+ * @summary Delete a contact and its stored message history
+ */
+export const useDeleteAdminContact = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminContact>>, TError,DeleteAdminContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminContact>>,
+        TError,
+        DeleteAdminContactMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminContactMutationOptions(options));
+    }
+
+export const getListAdminMessagesUrl = (params?: ListAdminMessagesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/messages?${stringifiedParams}` : `/api/admin/messages`
+}
+
+/**
+ * @summary Review stored message history across accounts
+ */
+export const listAdminMessages = async (params?: ListAdminMessagesParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminMessagesPage> => {
+
+  return customFetch<AdminMessagesPage>(getListAdminMessagesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminMessagesQueryKey = (params?: ListAdminMessagesParams,) => {
+    return [
+    `/api/admin/messages`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminMessages>>, TError = ErrorType<Error>>(params?: ListAdminMessagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminMessagesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminMessages>>> = ({ signal }) => listAdminMessages(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminMessages>>>
+export type ListAdminMessagesQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Review stored message history across accounts
+ */
+
+export function useListAdminMessages<TData = Awaited<ReturnType<typeof listAdminMessages>>, TError = ErrorType<Error>>(
+ params?: ListAdminMessagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminMessagesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendAdminMessageUrl = () => {
+
+
+
+
+  return `/api/admin/messages`
+}
+
+/**
+ * @summary Send one message as an account to its opted-in contact
+ */
+export const sendAdminMessage = async (adminMessageSend: AdminMessageSend, options?: Parameters<typeof customFetch>[1]): Promise<AdminMessageSendResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMessageSendResult>(getSendAdminMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMessageSend)
+  }
+);}
+
+
+
+
+
+export const getSendAdminMessageMutationKey = () => ['sendAdminMessage'] as const;
+
+export const getSendAdminMessageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAdminMessage>>, TError,SendAdminMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendAdminMessage>>, TError,SendAdminMessageMutationVariables, TContext> => {
+
+const mutationKey = getSendAdminMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendAdminMessage>>, SendAdminMessageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendAdminMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendAdminMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendAdminMessage>>>
+    export type SendAdminMessageMutationBody = BodyType<AdminMessageSend>
+    export type SendAdminMessageMutationError = ErrorType<Error>
+    export type SendAdminMessageMutationVariables = {data: BodyType<AdminMessageSend>}
+
+    /**
+ * @summary Send one message as an account to its opted-in contact
+ */
+export const useSendAdminMessage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAdminMessage>>, TError,SendAdminMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendAdminMessage>>,
+        TError,
+        SendAdminMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendAdminMessageMutationOptions(options));
+    }
+
+export const getDeleteAdminMessageUrl = (messageId: string,) => {
+
+
+
+
+  return `/api/admin/messages/${messageId}`
+}
+
+/**
+ * @summary Delete a stored message record without recalling the delivered message
+ */
+export const deleteAdminMessage = async (messageId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminMessageUrl(messageId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminMessageMutationKey = () => ['deleteAdminMessage'] as const;
+
+export const getDeleteAdminMessageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMessage>>, TError,DeleteAdminMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMessage>>, TError,DeleteAdminMessageMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminMessage>>, DeleteAdminMessageMutationVariables> = (props) => {
+          const {messageId} = props ?? {};
+
+          return  deleteAdminMessage(messageId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminMessageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminMessage>>>
+
+    export type DeleteAdminMessageMutationError = ErrorType<Error>
+    export type DeleteAdminMessageMutationVariables = {messageId: string}
+
+    /**
+ * @summary Delete a stored message record without recalling the delivered message
+ */
+export const useDeleteAdminMessage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMessage>>, TError,DeleteAdminMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminMessage>>,
+        TError,
+        DeleteAdminMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminMessageMutationOptions(options));
+    }
+
+export const getGetAdminSystemSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/system`
+}
+
+/**
+ * @summary Get global outbound messaging settings
+ */
+export const getAdminSystemSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSystemSettings> => {
+
+  return customFetch<AdminSystemSettings>(getGetAdminSystemSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminSystemSettingsQueryKey = () => {
+    return [
+    `/api/admin/system`
+    ] as const;
+    }
+
+
+export const getGetAdminSystemSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSystemSettings>>, TError = ErrorType<Error>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSystemSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminSystemSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSystemSettings>>> = ({ signal }) => getAdminSystemSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminSystemSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminSystemSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminSystemSettings>>>
+export type GetAdminSystemSettingsQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Get global outbound messaging settings
+ */
+
+export function useGetAdminSystemSettings<TData = Awaited<ReturnType<typeof getAdminSystemSettings>>, TError = ErrorType<Error>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSystemSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminSystemSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminSystemSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/system`
+}
+
+/**
+ * @summary Pause or resume all outbound WhatsApp messaging
+ */
+export const updateAdminSystemSettings = async (adminSystemSettingsUpdate: AdminSystemSettingsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminSystemSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminSystemSettings>(getUpdateAdminSystemSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminSystemSettingsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSystemSettingsMutationKey = () => ['updateAdminSystemSettings'] as const;
+
+export const getUpdateAdminSystemSettingsMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSystemSettings>>, TError,UpdateAdminSystemSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSystemSettings>>, TError,UpdateAdminSystemSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSystemSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSystemSettings>>, UpdateAdminSystemSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAdminSystemSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSystemSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSystemSettings>>>
+    export type UpdateAdminSystemSettingsMutationBody = BodyType<AdminSystemSettingsUpdate>
+    export type UpdateAdminSystemSettingsMutationError = ErrorType<Error>
+    export type UpdateAdminSystemSettingsMutationVariables = {data: BodyType<AdminSystemSettingsUpdate>}
+
+    /**
+ * @summary Pause or resume all outbound WhatsApp messaging
+ */
+export const useUpdateAdminSystemSettings = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSystemSettings>>, TError,UpdateAdminSystemSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSystemSettings>>,
+        TError,
+        UpdateAdminSystemSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSystemSettingsMutationOptions(options));
+    }
+
+export const getDisconnectAdminUserWhatsAppUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/connections/${userId}/disconnect`
+}
+
+/**
+ * @summary Disconnect a user's WhatsApp session without returning credentials
+ */
+export const disconnectAdminUserWhatsApp = async (userId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminConnectionActionResult> => {
+
+  return customFetch<AdminConnectionActionResult>(getDisconnectAdminUserWhatsAppUrl(userId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectAdminUserWhatsAppMutationKey = () => ['disconnectAdminUserWhatsApp'] as const;
+
+export const getDisconnectAdminUserWhatsAppMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectAdminUserWhatsApp>>, TError,DisconnectAdminUserWhatsAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectAdminUserWhatsApp>>, TError,DisconnectAdminUserWhatsAppMutationVariables, TContext> => {
+
+const mutationKey = getDisconnectAdminUserWhatsAppMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectAdminUserWhatsApp>>, DisconnectAdminUserWhatsAppMutationVariables> = (props) => {
+          const {userId} = props ?? {};
+
+          return  disconnectAdminUserWhatsApp(userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectAdminUserWhatsAppMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectAdminUserWhatsApp>>>
+
+    export type DisconnectAdminUserWhatsAppMutationError = ErrorType<Error>
+    export type DisconnectAdminUserWhatsAppMutationVariables = {userId: string}
+
+    /**
+ * @summary Disconnect a user's WhatsApp session without returning credentials
+ */
+export const useDisconnectAdminUserWhatsApp = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectAdminUserWhatsApp>>, TError,DisconnectAdminUserWhatsAppMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectAdminUserWhatsApp>>,
+        TError,
+        DisconnectAdminUserWhatsAppMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDisconnectAdminUserWhatsAppMutationOptions(options));
     }
 

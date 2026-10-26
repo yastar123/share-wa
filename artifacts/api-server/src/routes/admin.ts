@@ -2,10 +2,15 @@ import { clerkClient } from "@clerk/express";
 import { desc, eq, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
+  DeleteAdminUserParams,
+  DeleteAdminUserResponse,
   GetAdminMeResponse,
   GetAdminOverviewResponse,
   ListAdminUsersQueryParams,
   ListAdminUsersResponse,
+  UpdateAdminUserStatusBody,
+  UpdateAdminUserStatusParams,
+  UpdateAdminUserStatusResponse,
   UpdateAdminUserRoleBody,
   UpdateAdminUserRoleParams,
   UpdateAdminUserRoleResponse,
@@ -21,8 +26,16 @@ import {
 } from "@workspace/db";
 import { requireAdmin, ensureAdminAccess } from "../middlewares/requireAdmin";
 import { requireAuth } from "../middlewares/requireAuth";
+import { disconnectWhatsApp } from "../lib/whatsapp";
 
 const router: IRouter = Router();
+
+function isClerkNotFound(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const value = error as { status?: unknown; statusCode?: unknown };
+  return value.status === 404 || value.statusCode === 404;
+}
+
 router.get("/admin/me", requireAuth, async (_req, res): Promise<void> => {
   const userId = res.locals.userId as string;
   const isAdmin = await ensureAdminAccess(userId);
@@ -36,6 +49,8 @@ adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
   const [
     userRows,
     adminRows,
+    suspendedRows,
+    deletionPendingRows,
     contactRows,
     messageRows,
     connectionRows,
@@ -46,7 +61,20 @@ adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
       .from(userProfilesTable),
     db
       .select({ count: sql<number>`count(*)::int` })
-      .from(adminUsersTable),
+      .from(adminUsersTable)
+      .innerJoin(
+        userProfilesTable,
+        eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+      )
+      .where(eq(userProfilesTable.accountStatus, "active")),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userProfilesTable)
+      .where(eq(userProfilesTable.accountStatus, "suspended")),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userProfilesTable)
+      .where(eq(userProfilesTable.accountStatus, "deletion_pending")),
     db
       .select({
         status: contactsTable.consentStatus,
@@ -105,6 +133,8 @@ adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
     GetAdminOverviewResponse.parse({
       totalUsers: Number(userRows[0]?.count ?? 0),
       totalAdmins: Number(adminRows[0]?.count ?? 0),
+      suspendedUsers: Number(suspendedRows[0]?.count ?? 0),
+      deletionPendingUsers: Number(deletionPendingRows[0]?.count ?? 0),
       totalContacts: [...contacts.values()].reduce((sum, count) => sum + count, 0),
       optedInContacts: contacts.get("opted_in") ?? 0,
       optedOutContacts: contacts.get("opted_out") ?? 0,
@@ -140,6 +170,7 @@ adminRouter.get("/admin/users", async (req, res): Promise<void> => {
         fullName: userProfilesTable.fullName,
         username: userProfilesTable.username,
         language: userProfilesTable.language,
+        accountStatus: userProfilesTable.accountStatus,
         isAdmin: adminUsersTable.clerkUserId,
         connectionStatus: whatsappSessionsTable.status,
         createdAt: userProfilesTable.createdAt,
@@ -185,6 +216,7 @@ adminRouter.get("/admin/users", async (req, res): Promise<void> => {
         fullName: row.fullName,
         username: row.username,
         language: row.language,
+        accountStatus: row.accountStatus,
         isAdmin: Boolean(row.isAdmin),
         connectionStatus: row.connectionStatus ?? "disconnected",
         createdAt: row.createdAt,
@@ -225,12 +257,20 @@ adminRouter.patch(
       .select({
         userId: userProfilesTable.clerkUserId,
         username: userProfilesTable.username,
+        accountStatus: userProfilesTable.accountStatus,
       })
       .from(userProfilesTable)
       .where(eq(userProfilesTable.clerkUserId, targetUserId))
       .limit(1);
     if (!target) {
       res.status(404).json({ error: "Akun tidak ditemukan." });
+      return;
+    }
+
+    if (wantsAdmin && target.accountStatus !== "active") {
+      res.status(409).json({
+        error: "Hanya akun aktif yang dapat diberi peran admin.",
+      });
       return;
     }
 
@@ -281,7 +321,12 @@ adminRouter.patch(
 
       const [adminCount] = await tx
         .select({ count: sql<number>`count(*)::int` })
-        .from(adminUsersTable);
+        .from(adminUsersTable)
+        .innerJoin(
+          userProfilesTable,
+          eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+        )
+        .where(eq(userProfilesTable.accountStatus, "active"));
       if (Number(adminCount?.count ?? 0) <= 1) {
         return { isAdmin: true, lastAdmin: true };
       }
@@ -309,6 +354,227 @@ adminRouter.patch(
         userId: targetUserId,
         isAdmin: roleResult.isAdmin,
       }),
+    );
+  },
+);
+
+adminRouter.patch(
+  "/admin/users/:userId/status",
+  async (req, res): Promise<void> => {
+    const params = UpdateAdminUserStatusParams.safeParse(req.params);
+    const body = UpdateAdminUserStatusBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({
+        error: params.error?.message ?? body.error?.message ?? "Permintaan tidak valid.",
+      });
+      return;
+    }
+
+    const actorId = res.locals.userId as string;
+    const userId = params.data.userId;
+    if (userId === actorId && body.data.status === "suspended") {
+      res.status(409).json({
+        error: "Gunakan akun administrator lain untuk menonaktifkan akun Anda.",
+      });
+      return;
+    }
+
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(190131039)`);
+      const [target] = await tx
+        .select({
+          username: userProfilesTable.username,
+          accountStatus: userProfilesTable.accountStatus,
+        })
+        .from(userProfilesTable)
+        .where(eq(userProfilesTable.clerkUserId, userId))
+        .limit(1);
+      if (!target) return { error: "not_found" as const };
+      if (target.accountStatus === "deletion_pending") {
+        return { error: "deletion_pending" as const };
+      }
+      if (target.accountStatus === body.data.status) {
+        return { status: body.data.status };
+      }
+
+      const [role] = await tx
+        .select({ clerkUserId: adminUsersTable.clerkUserId })
+        .from(adminUsersTable)
+        .where(eq(adminUsersTable.clerkUserId, userId))
+        .limit(1);
+      if (
+        body.data.status === "suspended" &&
+        target.accountStatus === "active" &&
+        role
+      ) {
+        const [activeAdminCount] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(adminUsersTable)
+          .innerJoin(
+            userProfilesTable,
+            eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+          )
+          .where(eq(userProfilesTable.accountStatus, "active"));
+        if (Number(activeAdminCount?.count ?? 0) <= 1) {
+          return { error: "last_admin" as const };
+        }
+      }
+
+      await tx
+        .update(userProfilesTable)
+        .set({ accountStatus: body.data.status, updatedAt: new Date() })
+        .where(eq(userProfilesTable.clerkUserId, userId));
+      await tx.insert(activityTable).values({
+        ownerUserId: actorId,
+        kind:
+          body.data.status === "suspended"
+            ? "admin_account_suspended"
+            : "admin_account_reactivated",
+        summary:
+          body.data.status === "suspended"
+            ? `Akun ${target.username} dinonaktifkan.`
+            : `Akun ${target.username} diaktifkan kembali.`,
+      });
+      return { status: body.data.status };
+    });
+
+    if ("error" in result) {
+      if (result.error === "not_found") {
+        res.status(404).json({ error: "Akun tidak ditemukan." });
+        return;
+      }
+      res.status(409).json({
+        error:
+          result.error === "last_admin"
+            ? "Administrator aktif terakhir tidak dapat dinonaktifkan."
+            : "Akun sedang menunggu penghapusan permanen.",
+      });
+      return;
+    }
+
+    if (result.status === "suspended") {
+      try {
+        await disconnectWhatsApp(userId);
+      } catch (error) {
+        req.log.error({ err: error, userId }, "Failed to disconnect suspended user's WhatsApp");
+      }
+    }
+
+    res.json(
+      UpdateAdminUserStatusResponse.parse({
+        userId,
+        status: result.status,
+      }),
+    );
+  },
+);
+
+adminRouter.delete(
+  "/admin/users/:userId",
+  async (req, res): Promise<void> => {
+    const params = DeleteAdminUserParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const actorId = res.locals.userId as string;
+    const userId = params.data.userId;
+    if (userId === actorId) {
+      res.status(409).json({
+        error: "Gunakan akun administrator lain untuk menghapus akun Anda.",
+      });
+      return;
+    }
+
+    const markResult = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(190131039)`);
+      const [target] = await tx
+        .select({
+          username: userProfilesTable.username,
+          accountStatus: userProfilesTable.accountStatus,
+        })
+        .from(userProfilesTable)
+        .where(eq(userProfilesTable.clerkUserId, userId))
+        .limit(1);
+      if (!target) return "not_found" as const;
+      if (target.accountStatus === "deletion_pending") return "pending" as const;
+
+      const [role] = await tx
+        .select({ clerkUserId: adminUsersTable.clerkUserId })
+        .from(adminUsersTable)
+        .where(eq(adminUsersTable.clerkUserId, userId))
+        .limit(1);
+      if (target.accountStatus === "active" && role) {
+        const [activeAdminCount] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(adminUsersTable)
+          .innerJoin(
+            userProfilesTable,
+            eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+          )
+          .where(eq(userProfilesTable.accountStatus, "active"));
+        if (Number(activeAdminCount?.count ?? 0) <= 1) return "last_admin" as const;
+      }
+
+      await tx
+        .update(userProfilesTable)
+        .set({ accountStatus: "deletion_pending", updatedAt: new Date() })
+        .where(eq(userProfilesTable.clerkUserId, userId));
+      await tx.insert(activityTable).values({
+        ownerUserId: actorId,
+        kind: "admin_account_deletion_started",
+        summary: `Penghapusan akun ${target.username} dimulai.`,
+      });
+      return "pending" as const;
+    });
+
+    if (markResult === "not_found") {
+      res.status(404).json({ error: "Akun tidak ditemukan." });
+      return;
+    }
+    if (markResult === "last_admin") {
+      res.status(409).json({
+        error: "Administrator aktif terakhir tidak dapat dihapus.",
+      });
+      return;
+    }
+
+    try {
+      await disconnectWhatsApp(userId);
+    } catch (error) {
+      req.log.error({ err: error, userId }, "Failed to disconnect WhatsApp during account deletion");
+      res.status(202).json(
+        DeleteAdminUserResponse.parse({ userId, status: "deletion_pending" }),
+      );
+      return;
+    }
+
+    try {
+      await clerkClient.users.deleteUser(userId);
+    } catch (error) {
+      if (!isClerkNotFound(error)) {
+        req.log.error({ err: error, userId }, "Clerk account deletion is pending");
+        res.status(202).json(
+          DeleteAdminUserResponse.parse({ userId, status: "deletion_pending" }),
+        );
+        return;
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.insert(activityTable).values({
+        ownerUserId: actorId,
+        kind: "admin_account_deleted",
+        summary: "Akun dan data terkait dihapus secara permanen.",
+      });
+      await tx
+        .delete(userProfilesTable)
+        .where(eq(userProfilesTable.clerkUserId, userId));
+    });
+
+    res.json(
+      DeleteAdminUserResponse.parse({ userId, status: "deleted" }),
     );
   },
 );

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminUserAccountStatus } from './adminUserAccountStatus';
 import type { AdminUserConnectionStatus } from './adminUserConnectionStatus';
 import type { AdminUserLanguage } from './adminUserLanguage';
 
@@ -16,6 +17,7 @@ export interface AdminUser {
   username: string;
   language: AdminUserLanguage;
   isAdmin: boolean;
+  accountStatus: AdminUserAccountStatus;
   connectionStatus: AdminUserConnectionStatus;
   createdAt: Date;
 }

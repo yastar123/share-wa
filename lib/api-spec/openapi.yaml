@@ -296,6 +296,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          description: Outbound messaging is paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/me:
     get:
       operationId: getAdminMe
@@ -404,6 +410,409 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: At least one admin must remain
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/users/{userId}/status:
+    patch:
+      operationId: updateAdminUserStatus
+      tags: [admin]
+      summary: Suspend or reactivate an app account
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAccountStatusUpdate"
+      responses:
+        "200":
+          description: Account status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAccountStatusResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Account cannot be suspended in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/users/{userId}:
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Permanently delete an app account and its stored data
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account and its stored data deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserDeleteResult"
+        "202":
+          description: Account access blocked; identity provider deletion needs retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserDeleteResult"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Cannot delete the last active admin or the current admin account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/contacts:
+    get:
+      operationId: listAdminContacts
+      tags: [admin]
+      summary: List contacts across accounts without exposing full phone numbers
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: consentStatus
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, opted_in, opted_out, pending]
+            default: all
+      responses:
+        "200":
+          description: Paginated contacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminContactsPage"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/contacts/{contactId}:
+    patch:
+      operationId: updateAdminContact
+      tags: [admin]
+      summary: Update contact name or consent status
+      parameters:
+        - name: contactId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminContactUpdate"
+      responses:
+        "200":
+          description: Contact updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminContact"
+        "400":
+          description: Invalid request or opt-in evidence missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteAdminContact
+      tags: [admin]
+      summary: Delete a contact and its stored message history
+      parameters:
+        - name: contactId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Contact and related message history deleted
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/messages:
+    get:
+      operationId: listAdminMessages
+      tags: [admin]
+      summary: Review stored message history across accounts
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: ownerUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, queued, sent, delivered, failed]
+            default: all
+      responses:
+        "200":
+          description: Paginated stored messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMessagesPage"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: sendAdminMessage
+      tags: [admin]
+      summary: Send one message as an account to its opted-in contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMessageSend"
+      responses:
+        "201":
+          description: Message sent and recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMessageSendResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Account or contact not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Contact is not opted in or account is not connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Outbound messaging is paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/messages/{messageId}:
+    delete:
+      operationId: deleteAdminMessage
+      tags: [admin]
+      summary: Delete a stored message record without recalling the delivered message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Stored message record deleted
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Message record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/system:
+    get:
+      operationId: getAdminSystemSettings
+      tags: [admin]
+      summary: Get global outbound messaging settings
+      responses:
+        "200":
+          description: System settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSystemSettings"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateAdminSystemSettings
+      tags: [admin]
+      summary: Pause or resume all outbound WhatsApp messaging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSystemSettingsUpdate"
+      responses:
+        "200":
+          description: System settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSystemSettings"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/connections/{userId}/disconnect:
+    post:
+      operationId: disconnectAdminUserWhatsApp
+      tags: [admin]
+      summary: Disconnect a user's WhatsApp session without returning credentials
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: WhatsApp session disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConnectionActionResult"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
           content:
             application/json:
               schema:
@@ -562,6 +971,8 @@ components:
       properties:
         totalUsers: { type: integer }
         totalAdmins: { type: integer }
+        suspendedUsers: { type: integer }
+        deletionPendingUsers: { type: integer }
         totalContacts: { type: integer }
         optedInContacts: { type: integer }
         optedOutContacts: { type: integer }
@@ -579,6 +990,8 @@ components:
       required:
         - totalUsers
         - totalAdmins
+        - suspendedUsers
+        - deletionPendingUsers
         - totalContacts
         - optedInContacts
         - optedOutContacts
@@ -598,11 +1011,12 @@ components:
         username: { type: string }
         language: { type: string, enum: [id, en, zh] }
         isAdmin: { type: boolean }
+        accountStatus: { type: string, enum: [active, suspended, deletion_pending] }
         connectionStatus:
           type: string
           enum: [disconnected, awaiting_link, connected, reconnecting, error]
         createdAt: { type: string, format: date-time }
-      required: [userId, email, fullName, username, language, isAdmin, connectionStatus, createdAt]
+      required: [userId, email, fullName, username, language, isAdmin, accountStatus, connectionStatus, createdAt]
     AdminUsersPage:
       type: object
       properties:
@@ -625,4 +1039,107 @@ components:
         userId: { type: string }
         isAdmin: { type: boolean }
       required: [userId, isAdmin]
+    AdminAccountStatusUpdate:
+      type: object
+      properties:
+        status: { type: string, enum: [active, suspended] }
+      required: [status]
+    AdminAccountStatusResult:
+      type: object
+      properties:
+        userId: { type: string }
+        status: { type: string, enum: [active, suspended] }
+      required: [userId, status]
+    AdminUserDeleteResult:
+      type: object
+      properties:
+        userId: { type: string }
+        status: { type: string, enum: [deleted, deletion_pending] }
+      required: [userId, status]
+    AdminContact:
+      type: object
+      properties:
+        contactId: { type: string, format: uuid }
+        ownerUserId: { type: string }
+        ownerUsername: { type: string }
+        displayName: { type: string }
+        phoneMasked: { type: string }
+        consentStatus: { type: string, enum: [opted_in, opted_out, pending] }
+        consentSource: { type: ["string", "null"] }
+        consentedAt: { type: ["string", "null"], format: date-time }
+        optedOutAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+      required: [contactId, ownerUserId, ownerUsername, displayName, phoneMasked, consentStatus, consentSource, consentedAt, optedOutAt, createdAt]
+    AdminContactsPage:
+      type: object
+      properties:
+        contacts:
+          type: array
+          items: { $ref: "#/components/schemas/AdminContact" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+      required: [contacts, total, limit, offset]
+    AdminContactUpdate:
+      type: object
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        consentStatus: { type: string, enum: [opted_in, opted_out, pending] }
+        consentSource: { type: string, minLength: 2, maxLength: 200 }
+    AdminMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ownerUserId: { type: string }
+        ownerUsername: { type: string }
+        contactId: { type: string, format: uuid }
+        contactName: { type: string }
+        phoneMasked: { type: string }
+        text: { type: string }
+        status: { type: string, enum: [queued, sent, delivered, failed] }
+        createdAt: { type: string, format: date-time }
+      required: [id, ownerUserId, ownerUsername, contactId, contactName, phoneMasked, text, status, createdAt]
+    AdminMessagesPage:
+      type: object
+      properties:
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/AdminMessage" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+      required: [messages, total, limit, offset]
+    AdminMessageSend:
+      type: object
+      properties:
+        ownerUserId: { type: string }
+        contactId: { type: string, format: uuid }
+        text: { type: string, minLength: 1, maxLength: 4000 }
+      required: [ownerUserId, contactId, text]
+    AdminMessageSendResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ownerUserId: { type: string }
+        contactId: { type: string, format: uuid }
+        status: { type: string, enum: [sent, failed] }
+        createdAt: { type: string, format: date-time }
+      required: [id, ownerUserId, contactId, status, createdAt]
+    AdminSystemSettings:
+      type: object
+      properties:
+        outboundMessagingEnabled: { type: boolean }
+        updatedAt: { type: ["string", "null"], format: date-time }
+      required: [outboundMessagingEnabled, updatedAt]
+    AdminSystemSettingsUpdate:
+      type: object
+      properties:
+        outboundMessagingEnabled: { type: boolean }
+      required: [outboundMessagingEnabled]
+    AdminConnectionActionResult:
+      type: object
+      properties:
+        userId: { type: string }
+        status: { type: string, enum: [disconnected] }
+      required: [userId, status]
 

@@ -11,6 +11,8 @@ import type { AdminConnectionCounts } from './adminConnectionCounts';
 export interface AdminOverview {
   totalUsers: number;
   totalAdmins: number;
+  suspendedUsers: number;
+  deletionPendingUsers: number;
   totalContacts: number;
   optedInContacts: number;
   optedOutContacts: number;

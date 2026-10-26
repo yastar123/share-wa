@@ -12,6 +12,7 @@ import {
   sendOneManualWhatsAppMessage,
   WhatsAppConnectionError,
 } from "../lib/whatsapp";
+import { isOutboundMessagingEnabled } from "../lib/system-settings";
 
 const router: IRouter = Router();
 router.use(requireAuth);
@@ -45,6 +46,10 @@ router.post("/messages", async (req, res): Promise<void> => {
   const text = parsed.data.text.trim();
   if (!text) {
     res.status(400).json({ error: "Isi pesan tidak boleh kosong." });
+    return;
+  }
+  if (!(await isOutboundMessagingEnabled())) {
+    res.status(503).json({ error: "Pengiriman pesan sedang dijeda oleh administrator." });
     return;
   }
 
