@@ -4,11 +4,11 @@ import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { userProfilesTable } from "./sharewa";
 
 export const adminUsersTable = pgTable("sharewa_admin_users", {
-  userId: text("user_id")
+  clerkUserId: text("user_id")
     .primaryKey()
-    .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
+    .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
   grantedByUserId: text("granted_by_user_id").references(
-    () => userProfilesTable.userId,
+    () => userProfilesTable.clerkUserId,
     { onDelete: "set null" },
   ),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -22,7 +22,7 @@ export const systemSettingsTable = pgTable("sharewa_system_settings", {
     .notNull()
     .default(true),
   updatedByUserId: text("updated_by_user_id").references(
-    () => userProfilesTable.userId,
+    () => userProfilesTable.clerkUserId,
     { onDelete: "set null" },
   ),
   updatedAt: timestamp("updated_at", { withTimezone: true })
