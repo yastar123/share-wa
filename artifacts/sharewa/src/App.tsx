@@ -11,6 +11,7 @@ import {
   ShieldCheck, Smartphone, Trash2, Unplug, UserRound, X,
 } from 'lucide-react';
 import {
+  useGetAdminMe,
   getGetConnectionStatusQueryKey, getGetDashboardActivityQueryKey, getGetDashboardSummaryQueryKey,
   getGetProfileQueryKey, getListContactsQueryKey,
   getListMessagesQueryKey, useCreateContact, useDeleteContact,
@@ -23,6 +24,7 @@ import {
 } from '@workspace/api-client-react';
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
+import AdminPage from '@/pages/admin';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider, translate, translateActivitySummary, useAppLanguage, type AppLanguage } from '@/lib/i18n';
@@ -106,7 +108,7 @@ const routes = [
   { href: '/messages', label: 'Messages', icon: MessageSquareText },
   { href: '/settings', label: 'Settings', icon: Settings2 },
 ];
-const pageNames: Record<string, string> = { '/dashboard': 'Your workspace', '/contacts': 'Contact book', '/messages': 'Message history', '/settings': 'Preferences' };
+const pageNames: Record<string, string> = { '/dashboard': 'Your workspace', '/contacts': 'Contact book', '/messages': 'Message history', '/settings': 'Preferences', '/admin': 'Admin console' };
 
 function Workspace({ children, path }: { children: ReactNode; path: string }) {
   const [, setLocation] = useLocation();
@@ -114,6 +116,7 @@ function Workspace({ children, path }: { children: ReactNode; path: string }) {
   const { signOut } = useClerk();
   const { language, setLanguage, t } = useAppLanguage();
   const profile = useGetProfile();
+  const adminAccess = useGetAdminMe();
   useEffect(() => {
     if (profile.data?.language && profile.data.language !== language) setLanguage(profile.data.language);
   }, [language, profile.data?.language, setLanguage]);
@@ -122,7 +125,7 @@ function Workspace({ children, path }: { children: ReactNode; path: string }) {
     <aside className="sidebar">
       <div className="side-brand"><Link href="/dashboard" className="brand"><Brand /></Link></div>
       <div className="side-label">{t('Workspace')}</div>
-      <nav className="nav-links">{routes.map(({ href, label, icon: Icon }) => <Link href={href} className={`nav-link${path === href ? ' active' : ''}`} key={href} data-testid={`link-nav-${label.toLowerCase()}`}><Icon size={17} /><span>{t(label)}</span></Link>)}</nav>
+      <nav className="nav-links">{routes.map(({ href, label, icon: Icon }) => <Link href={href} className={`nav-link${path === href ? ' active' : ''}`} key={href} data-testid={`link-nav-${label.toLowerCase()}`}><Icon size={17} /><span>{t(label)}</span></Link>)}{adminAccess.data?.isAdmin && <Link href="/admin" className={`nav-link${path === '/admin' ? ' active' : ''}`} data-testid="link-nav-admin"><ShieldCheck size={17} /><span>{t('Admin')}</span></Link>}</nav>
       <div className="side-spacer" />
       <button className="side-account" type="button" onClick={() => setLocation('/settings')} data-testid="button-open-profile"><span className="avatar">{shortName.slice(0, 1).toUpperCase()}</span><span style={{ minWidth: 0, flex: 1 }}><span className="account-name" style={{ display: 'block' }}>{shortName}</span><span className="account-id" style={{ display: 'block' }}>{t('Personal workspace')}</span></span><ChevronDown size={14} className="muted" /></button>
       <button className="nav-link" style={{ border: 0, width: '100%', marginTop: 8 }} onClick={() => signOut({ redirectUrl: basePath || '/' })} data-testid="button-sign-out"><LogOut size={16} /><span>{t('Sign out')}</span></button>
@@ -429,6 +432,7 @@ function ClerkRoutes() {
       <Route path="/contacts">{() => <ProtectedPage path="/contacts"><ContactsPage /></ProtectedPage>}</Route>
       <Route path="/messages">{() => <ProtectedPage path="/messages"><MessagesPage /></ProtectedPage>}</Route>
       <Route path="/settings">{() => <ProtectedPage path="/settings"><SettingsPage /></ProtectedPage>}</Route>
+      <Route path="/admin">{() => <ProtectedPage path="/admin"><AdminPage /></ProtectedPage>}</Route>
       <Route><div className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}><EmptyState title={t('Page not found')} copy={t('This ShareWa workspace page does not exist.')} action={<Link href="/" className="btn btn-primary"><ArrowLeft size={14} /> {t('Back to home')}</Link>} /></div></Route>
     </Switch></RoutedErrorBoundary>
   </ClerkProvider>;

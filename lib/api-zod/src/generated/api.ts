@@ -298,3 +298,92 @@ export const SendManualMessageResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the current user's admin access status
+ */
+export const GetAdminMeResponse = zod.object({
+  "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary Get aggregate platform statistics and recent activity
+ */
+export const GetAdminOverviewResponse = zod.object({
+  "totalUsers": zod.number().int(),
+  "totalAdmins": zod.number().int(),
+  "totalContacts": zod.number().int(),
+  "optedInContacts": zod.number().int(),
+  "optedOutContacts": zod.number().int(),
+  "pendingContacts": zod.number().int(),
+  "totalMessages": zod.number().int(),
+  "sentMessages": zod.number().int(),
+  "deliveredMessages": zod.number().int(),
+  "failedMessages": zod.number().int(),
+  "connections": zod.object({
+  "connected": zod.number().int(),
+  "disconnected": zod.number().int(),
+  "awaitingLink": zod.number().int(),
+  "reconnecting": zod.number().int(),
+  "error": zod.number().int()
+}),
+  "recentActivity": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "kind": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List app users and admin roles
+ */
+export const listAdminUsersQueryLimitDefault = 25;
+export const listAdminUsersQueryLimitMax = 100;
+
+export const listAdminUsersQueryOffsetDefault = 0;
+export const listAdminUsersQueryOffsetMin = 0;
+
+
+
+export const ListAdminUsersQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listAdminUsersQueryLimitMax).default(listAdminUsersQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminUsersQueryOffsetMin).default(listAdminUsersQueryOffsetDefault)
+})
+
+export const ListAdminUsersResponse = zod.object({
+  "users": zod.array(zod.object({
+  "userId": zod.string(),
+  "email": zod.string().nullable(),
+  "fullName": zod.string(),
+  "username": zod.string(),
+  "language": zod.enum(['id', 'en', 'zh']),
+  "isAdmin": zod.boolean(),
+  "connectionStatus": zod.enum(['disconnected', 'awaiting_link', 'connected', 'reconnecting', 'error']),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.number().int(),
+  "limit": zod.number().int(),
+  "offset": zod.number().int()
+})
+
+
+/**
+ * @summary Grant or revoke an app admin role
+ */
+export const UpdateAdminUserRoleParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const UpdateAdminUserRoleBody = zod.object({
+  "isAdmin": zod.boolean()
+})
+
+export const UpdateAdminUserRoleResponse = zod.object({
+  "userId": zod.string(),
+  "isAdmin": zod.boolean()
+})
+
+

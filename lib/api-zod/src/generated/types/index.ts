@@ -8,6 +8,16 @@
 
 export * from './activityItem';
 export * from './activityItemKind';
+export * from './adminActivityItem';
+export * from './adminConnectionCounts';
+export * from './adminMe';
+export * from './adminOverview';
+export * from './adminRoleUpdate';
+export * from './adminRoleUpdateResult';
+export * from './adminUser';
+export * from './adminUserConnectionStatus';
+export * from './adminUserLanguage';
+export * from './adminUsersPage';
 export * from './consentUpdate';
 export * from './consentUpdateStatus';
 export * from './contact';
@@ -19,6 +29,7 @@ export * from './dashboardSummaryConnectionStatus';
 export * from './error';
 export * from './getDashboardActivityParams';
 export * from './healthStatus';
+export * from './listAdminUsersParams';
 export * from './listContactsConsent';
 export * from './listContactsParams';
 export * from './listMessagesParams';

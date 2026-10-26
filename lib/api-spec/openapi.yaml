@@ -20,6 +20,8 @@ tags:
     description: User-owned WhatsApp linked-device connection
   - name: messages
     description: Manual one-recipient messaging
+  - name: admin
+    description: Admin-only platform overview and user role management
 paths:
   /healthz:
     get:
@@ -294,6 +296,118 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/me:
+    get:
+      operationId: getAdminMe
+      tags: [admin]
+      summary: Get the current user's admin access status
+      responses:
+        "200":
+          description: Admin access status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMe"
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [admin]
+      summary: Get aggregate platform statistics and recent activity
+      responses:
+        "200":
+          description: Aggregate admin overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOverview"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List app users and admin roles
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Users and their admin roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUsersPage"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/users/{userId}/role:
+    patch:
+      operationId: updateAdminUserRole
+      tags: [admin]
+      summary: Grant or revoke an app admin role
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRoleUpdate"
+      responses:
+        "200":
+          description: Updated admin role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRoleUpdateResult"
+        "400":
+          description: Invalid request or last-admin protection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: At least one admin must remain
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     HealthStatus:
@@ -420,4 +534,95 @@ components:
         contactId: { type: string, format: uuid }
         text: { type: string, minLength: 1, maxLength: 4000 }
       required: [contactId, text]
+    AdminMe:
+      type: object
+      properties:
+        isAdmin: { type: boolean }
+      required: [isAdmin]
+    AdminConnectionCounts:
+      type: object
+      properties:
+        connected: { type: integer }
+        disconnected: { type: integer }
+        awaitingLink: { type: integer }
+        reconnecting: { type: integer }
+        error: { type: integer }
+      required: [connected, disconnected, awaitingLink, reconnecting, error]
+    AdminActivityItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string }
+        username: { type: string }
+        kind: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, userId, username, kind, createdAt]
+    AdminOverview:
+      type: object
+      properties:
+        totalUsers: { type: integer }
+        totalAdmins: { type: integer }
+        totalContacts: { type: integer }
+        optedInContacts: { type: integer }
+        optedOutContacts: { type: integer }
+        pendingContacts: { type: integer }
+        totalMessages: { type: integer }
+        sentMessages: { type: integer }
+        deliveredMessages: { type: integer }
+        failedMessages: { type: integer }
+        connections:
+          $ref: "#/components/schemas/AdminConnectionCounts"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminActivityItem"
+      required:
+        - totalUsers
+        - totalAdmins
+        - totalContacts
+        - optedInContacts
+        - optedOutContacts
+        - pendingContacts
+        - totalMessages
+        - sentMessages
+        - deliveredMessages
+        - failedMessages
+        - connections
+        - recentActivity
+    AdminUser:
+      type: object
+      properties:
+        userId: { type: string }
+        email: { type: ["string", "null"] }
+        fullName: { type: string }
+        username: { type: string }
+        language: { type: string, enum: [id, en, zh] }
+        isAdmin: { type: boolean }
+        connectionStatus:
+          type: string
+          enum: [disconnected, awaiting_link, connected, reconnecting, error]
+        createdAt: { type: string, format: date-time }
+      required: [userId, email, fullName, username, language, isAdmin, connectionStatus, createdAt]
+    AdminUsersPage:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUser"
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+      required: [users, total, limit, offset]
+    AdminRoleUpdate:
+      type: object
+      properties:
+        isAdmin: { type: boolean }
+      required: [isAdmin]
+    AdminRoleUpdateResult:
+      type: object
+      properties:
+        userId: { type: string }
+        isAdmin: { type: boolean }
+      required: [userId, isAdmin]
 

@@ -229,6 +229,89 @@ export interface ManualMessageInput {
   text: string;
 }
 
+export interface AdminMe {
+  isAdmin: boolean;
+}
+
+export interface AdminConnectionCounts {
+  connected: number;
+  disconnected: number;
+  awaitingLink: number;
+  reconnecting: number;
+  error: number;
+}
+
+export interface AdminActivityItem {
+  id: string;
+  userId: string;
+  username: string;
+  kind: string;
+  createdAt: string;
+}
+
+export interface AdminOverview {
+  totalUsers: number;
+  totalAdmins: number;
+  totalContacts: number;
+  optedInContacts: number;
+  optedOutContacts: number;
+  pendingContacts: number;
+  totalMessages: number;
+  sentMessages: number;
+  deliveredMessages: number;
+  failedMessages: number;
+  connections: AdminConnectionCounts;
+  recentActivity: AdminActivityItem[];
+}
+
+export type AdminUserLanguage = typeof AdminUserLanguage[keyof typeof AdminUserLanguage];
+
+
+export const AdminUserLanguage = {
+  id: 'id',
+  en: 'en',
+  zh: 'zh',
+} as const;
+
+export type AdminUserConnectionStatus = typeof AdminUserConnectionStatus[keyof typeof AdminUserConnectionStatus];
+
+
+export const AdminUserConnectionStatus = {
+  disconnected: 'disconnected',
+  awaiting_link: 'awaiting_link',
+  connected: 'connected',
+  reconnecting: 'reconnecting',
+  error: 'error',
+} as const;
+
+export interface AdminUser {
+  userId: string;
+  /** @nullable */
+  email: string | null;
+  fullName: string;
+  username: string;
+  language: AdminUserLanguage;
+  isAdmin: boolean;
+  connectionStatus: AdminUserConnectionStatus;
+  createdAt: string;
+}
+
+export interface AdminUsersPage {
+  users: AdminUser[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminRoleUpdate {
+  isAdmin: boolean;
+}
+
+export interface AdminRoleUpdateResult {
+  userId: string;
+  isAdmin: boolean;
+}
+
 export type GetDashboardActivityParams = {
 /**
  * @minimum 1
@@ -262,5 +345,17 @@ contactId?: string;
  * @maximum 100
  */
 limit?: number;
+};
+
+export type ListAdminUsersParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 

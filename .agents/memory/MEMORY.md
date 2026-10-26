@@ -1,0 +1,1 @@
+- [OpenAPI generator runtime](node-codegen-runtime.md) — if codegen fails on a missing built-in JavaScript API, check the active Node version first.
