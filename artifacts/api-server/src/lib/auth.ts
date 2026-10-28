@@ -13,6 +13,7 @@ import {
   db,
   userProfilesTable,
 } from "@workspace/db";
+import { logger } from "./logger";
 
 export const AUTH_COOKIE_NAME = "sharewa_session";
 export const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -71,10 +72,16 @@ export async function ensureInitialAdmin(): Promise<void> {
   const email = normalizeEmail(process.env.SHAREWA_ADMIN_EMAIL ?? "");
   const password = process.env.SHAREWA_ADMIN_PASSWORD ?? "";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("SHAREWA_ADMIN_EMAIL must be a valid email address.");
+    logger.warn(
+      "Initial admin was not seeded: set SHAREWA_ADMIN_EMAIL to a valid address.",
+    );
+    return;
   }
   if (password.length < 12 || Buffer.byteLength(password, "utf8") > 256) {
-    throw new Error("SHAREWA_ADMIN_PASSWORD must be 12–128 characters.");
+    logger.warn(
+      "Initial admin was not seeded: SHAREWA_ADMIN_PASSWORD must be 12–128 characters.",
+    );
+    return;
   }
 
   await db.transaction(async (tx) => {

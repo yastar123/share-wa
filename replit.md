@@ -11,7 +11,7 @@ ShareWa is a private, consent-first workspace for managing contacts, linking you
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Replit provides PostgreSQL through the runtime-managed `DATABASE_URL`. No Clerk account or key is used.
-- Add `SESSION_SECRET`, `SHAREWA_ADMIN_EMAIL`, and `SHAREWA_ADMIN_PASSWORD` through Replit Secrets. The API creates or updates the initial administrator at startup; use a strong password with at least 12 characters.
+- Add `SESSION_SECRET`, `SHAREWA_ADMIN_EMAIL`, and `SHAREWA_ADMIN_PASSWORD` through Replit Secrets. The API creates or updates the initial administrator at startup when the email is valid and the password is 12–128 characters; otherwise the API stays online without an admin account.
 - User passwords are stored as scrypt hashes. Login sessions use expiring, HttpOnly cookies and hashed tokens in PostgreSQL.
 - Link only a WhatsApp account you own or are authorized to use. Messages are manual, one contact at a time, and require recorded consent.
 
