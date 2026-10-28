@@ -67,7 +67,7 @@ router.get("/admin/contacts", async (req, res): Promise<void> => {
       .from(contactsTable)
       .innerJoin(
         userProfilesTable,
-        eq(contactsTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(contactsTable.ownerUserId, userProfilesTable.userId),
       )
       .where(where)
       .orderBy(desc(contactsTable.createdAt))
@@ -78,7 +78,7 @@ router.get("/admin/contacts", async (req, res): Promise<void> => {
       .from(contactsTable)
       .innerJoin(
         userProfilesTable,
-        eq(contactsTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(contactsTable.ownerUserId, userProfilesTable.userId),
       )
       .where(where),
   ]);
@@ -134,7 +134,7 @@ router.patch(
       .from(contactsTable)
       .innerJoin(
         userProfilesTable,
-        eq(contactsTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(contactsTable.ownerUserId, userProfilesTable.userId),
       )
       .where(eq(contactsTable.id, params.data.contactId))
       .limit(1);
@@ -233,7 +233,7 @@ router.delete(
       .from(contactsTable)
       .innerJoin(
         userProfilesTable,
-        eq(contactsTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(contactsTable.ownerUserId, userProfilesTable.userId),
       )
       .where(eq(contactsTable.id, params.data.contactId))
       .limit(1);

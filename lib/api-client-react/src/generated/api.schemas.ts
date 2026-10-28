@@ -13,6 +13,43 @@ export interface Error {
   error: string;
 }
 
+export interface AuthCredentials {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface UserRegistration {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface AuthUser {
+  userId: string;
+  /** @nullable */
+  email: string | null;
+  fullName: string;
+  isAdmin: boolean;
+}
+
+export interface SignOutResult {
+  signedOut: boolean;
+}
+
 export type UserProfileLanguage = typeof UserProfileLanguage[keyof typeof UserProfileLanguage];
 
 

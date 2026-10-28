@@ -1,58 +1,16 @@
-import { clerkClient } from "@clerk/express";
 import type { RequestHandler } from "express";
-import { db, activityTable, adminUsersTable } from "@workspace/db";
+import { db, adminUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 export async function ensureAdminAccess(userId: string): Promise<boolean> {
   const [existingRole] = await db
-    .select({ clerkUserId: adminUsersTable.clerkUserId })
+    .select({ userId: adminUsersTable.userId })
     .from(adminUsersTable)
-    .where(eq(adminUsersTable.clerkUserId, userId))
+    .where(eq(adminUsersTable.userId, userId))
     .limit(1);
 
   if (existingRole) return true;
-
-  const [anyAdmin] = await db
-    .select({ clerkUserId: adminUsersTable.clerkUserId })
-    .from(adminUsersTable)
-    .limit(1);
-
-  if (anyAdmin) return false;
-
-  const bootstrapEmail = process.env.SHAREWA_INITIAL_ADMIN_EMAIL
-    ?.trim()
-    .toLowerCase();
-  if (!bootstrapEmail) return false;
-
-  const user = await clerkClient.users.getUser(userId);
-  const ownsVerifiedEmail = user.emailAddresses.some(
-    (email) =>
-      email.emailAddress.trim().toLowerCase() === bootstrapEmail &&
-      email.verification?.status === "verified",
-  );
-  if (!ownsVerifiedEmail) return false;
-
-  const [createdRole] = await db
-    .insert(adminUsersTable)
-    .values({ clerkUserId: userId })
-    .onConflictDoNothing()
-    .returning({ clerkUserId: adminUsersTable.clerkUserId });
-
-  if (createdRole) {
-    await db.insert(activityTable).values({
-      ownerUserId: userId,
-      kind: "admin_role_granted",
-      summary: "Peran admin awal diaktifkan.",
-    });
-  }
-
-  const [confirmedRole] = await db
-    .select({ clerkUserId: adminUsersTable.clerkUserId })
-    .from(adminUsersTable)
-    .where(eq(adminUsersTable.clerkUserId, userId))
-    .limit(1);
-
-  return Boolean(confirmedRole);
+  return false;
 }
 
 export const requireAdmin: RequestHandler = async (_req, res, next) => {

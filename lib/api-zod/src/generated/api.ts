@@ -18,6 +18,74 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Sign in with an email and password
+ */
+export const signInBodyEmailMax = 254;
+
+export const signInBodyPasswordMin = 12;
+export const signInBodyPasswordMax = 128;
+
+
+
+export const SignInBody = zod.object({
+  "email": zod.string().email().max(signInBodyEmailMax),
+  "password": zod.string().min(signInBodyPasswordMin).max(signInBodyPasswordMax)
+})
+
+export const SignInResponse = zod.object({
+  "userId": zod.string(),
+  "email": zod.string().email().nullable(),
+  "fullName": zod.string(),
+  "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary Create a member account
+ */
+export const registerUserBodyFullNameMax = 120;
+
+export const registerUserBodyEmailMax = 254;
+
+export const registerUserBodyPasswordMin = 12;
+export const registerUserBodyPasswordMax = 128;
+
+
+
+export const RegisterUserBody = zod.object({
+  "fullName": zod.string().min(1).max(registerUserBodyFullNameMax),
+  "email": zod.string().email().max(registerUserBodyEmailMax),
+  "password": zod.string().min(registerUserBodyPasswordMin).max(registerUserBodyPasswordMax)
+})
+
+export const RegisterUserResponse = zod.object({
+  "userId": zod.string(),
+  "email": zod.string().email().nullable(),
+  "fullName": zod.string(),
+  "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary Get the current authenticated user
+ */
+export const GetCurrentUserResponse = zod.object({
+  "userId": zod.string(),
+  "email": zod.string().email().nullable(),
+  "fullName": zod.string(),
+  "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary End the current session
+ */
+export const SignOutResponse = zod.object({
+  "signedOut": zod.boolean()
+})
+
+
+/**
  * @summary Get the current user's profile
  */
 export const GetProfileResponse = zod.object({

@@ -39,7 +39,8 @@ export const accountStatusEnum = pgEnum("sharewa_account_status", [
 ]);
 
 export const userProfilesTable = pgTable("sharewa_user_profiles", {
-  clerkUserId: text("user_id").primaryKey(),
+  userId: text("user_id").primaryKey(),
+  email: text("email").unique(),
   fullName: text("full_name").notNull().default("Pengguna baru"),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash"),
@@ -56,7 +57,7 @@ export const contactsTable = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     ownerUserId: text("owner_user_id")
       .notNull()
-      .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
     displayName: text("display_name").notNull(),
     phone: text("phone").notNull(),
     consentStatus: consentStatusEnum("consent_status").notNull().default("opted_in"),
@@ -78,7 +79,7 @@ export const consentEventsTable = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     ownerUserId: text("owner_user_id")
       .notNull()
-      .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
     contactId: uuid("contact_id")
       .notNull()
       .references(() => contactsTable.id, { onDelete: "cascade" }),
@@ -92,7 +93,7 @@ export const consentEventsTable = pgTable(
 export const whatsappSessionsTable = pgTable("sharewa_whatsapp_sessions", {
   ownerUserId: text("owner_user_id")
     .primaryKey()
-    .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
+    .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
   encryptedCredentials: text("encrypted_credentials"),
   encryptedSignalKeys: text("encrypted_signal_keys"),
   status: connectionStatusEnum("status").notNull().default("disconnected"),
@@ -109,7 +110,7 @@ export const messagesTable = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     ownerUserId: text("owner_user_id")
       .notNull()
-      .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
     contactId: uuid("contact_id")
       .notNull()
       .references(() => contactsTable.id, { onDelete: "cascade" }),
@@ -132,7 +133,7 @@ export const activityTable = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     ownerUserId: text("owner_user_id")
       .notNull()
-      .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     summary: text("summary").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -146,7 +147,7 @@ export const authSessionsTable = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     userId: text("user_id")
       .notNull()
-      .references(() => userProfilesTable.clerkUserId, { onDelete: "cascade" }),
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
     tokenHash: text("token_hash").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

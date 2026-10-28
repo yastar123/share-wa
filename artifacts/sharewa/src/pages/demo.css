@@ -1,5 +1,11 @@
 .sign-in-layout { width: min(980px, 100%); margin: auto; display: grid; grid-template-columns: minmax(320px, 440px) minmax(300px, 1fr); align-items: center; gap: 24px; }
 .sign-in-main { display: grid; justify-items: center; gap: 20px; }
+.auth-form { width: min(440px, 100%); }
+.auth-form .section-heading { margin-bottom: 20px; }
+.auth-submit { width: 100%; justify-content: center; }
+.auth-switch { margin: 18px 0 0; color: #8ea294; text-align: center; font-size: 11px; }
+.auth-switch a { color: #62dc86; font-weight: 700; }
+.sign-up-layout { width: min(440px, 100%); grid-template-columns: 1fr; }
 .demo-access { padding: 22px; }
 .demo-access-heading { display: flex; align-items: center; gap: 12px; }
 .demo-access-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; border: 1px solid rgba(67,220,116,.23); color: #68e78e; background: rgba(40,119,61,.16); }

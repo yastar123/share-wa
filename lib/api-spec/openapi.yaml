@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Email and password authentication
   - name: profile
     description: User profile and preferences
   - name: dashboard
@@ -36,6 +38,84 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/login:
+    post:
+      operationId: signIn
+      tags: [auth]
+      summary: Sign in with an email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "200":
+          description: Signed-in user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Credentials did not match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Create a member account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegistration"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "409":
+          description: Email is already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Sign in required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/logout:
+    post:
+      operationId: signOut
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "200":
+          description: Session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignOutResult"
   /profile:
     get:
       operationId: getProfile
@@ -832,6 +912,32 @@ components:
         error:
           type: string
       required: [error]
+    AuthCredentials:
+      type: object
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+      required: [email, password]
+    UserRegistration:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+      required: [fullName, email, password]
+    AuthUser:
+      type: object
+      properties:
+        userId: { type: string }
+        email: { type: ["string", "null"], format: email }
+        fullName: { type: string }
+        isAdmin: { type: boolean }
+      required: [userId, email, fullName, isAdmin]
+    SignOutResult:
+      type: object
+      properties:
+        signedOut: { type: boolean }
+      required: [signedOut]
     UserProfile:
       type: object
       properties:

@@ -1,4 +1,3 @@
-import { clerkClient } from "@clerk/express";
 import { desc, eq, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -30,12 +29,6 @@ import { disconnectWhatsApp } from "../lib/whatsapp";
 
 const router: IRouter = Router();
 
-function isClerkNotFound(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const value = error as { status?: unknown; statusCode?: unknown };
-  return value.status === 404 || value.statusCode === 404;
-}
-
 router.get("/admin/me", requireAuth, async (_req, res): Promise<void> => {
   const userId = res.locals.userId as string;
   const isAdmin = await ensureAdminAccess(userId);
@@ -64,7 +57,7 @@ adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
       .from(adminUsersTable)
       .innerJoin(
         userProfilesTable,
-        eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+        eq(adminUsersTable.userId, userProfilesTable.userId),
       )
       .where(eq(userProfilesTable.accountStatus, "active")),
     db
@@ -97,7 +90,7 @@ adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
       .from(userProfilesTable)
       .leftJoin(
         whatsappSessionsTable,
-        eq(userProfilesTable.clerkUserId, whatsappSessionsTable.ownerUserId),
+        eq(userProfilesTable.userId, whatsappSessionsTable.ownerUserId),
       )
       .groupBy(
         sql`coalesce(${whatsappSessionsTable.status}::text, 'disconnected')`,
@@ -113,7 +106,7 @@ adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
       .from(activityTable)
       .innerJoin(
         userProfilesTable,
-        eq(activityTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(activityTable.ownerUserId, userProfilesTable.userId),
       )
       .orderBy(desc(activityTable.createdAt))
       .limit(20),
@@ -166,23 +159,24 @@ adminRouter.get("/admin/users", async (req, res): Promise<void> => {
   const [rows, totalRows] = await Promise.all([
     db
       .select({
-        userId: userProfilesTable.clerkUserId,
+        userId: userProfilesTable.userId,
+        email: userProfilesTable.email,
         fullName: userProfilesTable.fullName,
         username: userProfilesTable.username,
         language: userProfilesTable.language,
         accountStatus: userProfilesTable.accountStatus,
-        isAdmin: adminUsersTable.clerkUserId,
+        isAdmin: adminUsersTable.userId,
         connectionStatus: whatsappSessionsTable.status,
         createdAt: userProfilesTable.createdAt,
       })
       .from(userProfilesTable)
       .leftJoin(
         adminUsersTable,
-        eq(userProfilesTable.clerkUserId, adminUsersTable.clerkUserId),
+        eq(userProfilesTable.userId, adminUsersTable.userId),
       )
       .leftJoin(
         whatsappSessionsTable,
-        eq(userProfilesTable.clerkUserId, whatsappSessionsTable.ownerUserId),
+        eq(userProfilesTable.userId, whatsappSessionsTable.ownerUserId),
       )
       .orderBy(desc(userProfilesTable.createdAt))
       .limit(limit)
@@ -192,27 +186,11 @@ adminRouter.get("/admin/users", async (req, res): Promise<void> => {
       .from(userProfilesTable),
   ]);
 
-  const clerkUsers =
-    rows.length > 0
-      ? await clerkClient.users.getUserList({
-          userId: rows.map((row) => row.userId),
-          limit: rows.length,
-        })
-      : { data: [] };
-  const primaryEmails = new Map(
-    clerkUsers.data.map((user) => [
-      user.id,
-      user.emailAddresses.find(
-        (email) => email.id === user.primaryEmailAddressId,
-      )?.emailAddress ?? null,
-    ]),
-  );
-
   res.json(
     ListAdminUsersResponse.parse({
       users: rows.map((row) => ({
         userId: row.userId,
-        email: primaryEmails.get(row.userId) ?? null,
+        email: row.email,
         fullName: row.fullName,
         username: row.username,
         language: row.language,
@@ -255,12 +233,12 @@ adminRouter.patch(
 
     const [target] = await db
       .select({
-        userId: userProfilesTable.clerkUserId,
+        userId: userProfilesTable.userId,
         username: userProfilesTable.username,
         accountStatus: userProfilesTable.accountStatus,
       })
       .from(userProfilesTable)
-      .where(eq(userProfilesTable.clerkUserId, targetUserId))
+      .where(eq(userProfilesTable.userId, targetUserId))
       .limit(1);
     if (!target) {
       res.status(404).json({ error: "Akun tidak ditemukan." });
@@ -274,25 +252,12 @@ adminRouter.patch(
       return;
     }
 
-    if (wantsAdmin) {
-      const clerkUser = await clerkClient.users.getUser(targetUserId);
-      const hasVerifiedEmail = clerkUser.emailAddresses.some(
-        (email) => email.verification?.status === "verified",
-      );
-      if (!hasVerifiedEmail) {
-        res.status(400).json({
-          error: "Akun harus memiliki email terverifikasi sebelum menjadi admin.",
-        });
-        return;
-      }
-    }
-
     const roleResult = await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(190131039)`);
       const [currentRole] = await tx
-        .select({ clerkUserId: adminUsersTable.clerkUserId })
+        .select({ userId: adminUsersTable.userId })
         .from(adminUsersTable)
-        .where(eq(adminUsersTable.clerkUserId, targetUserId))
+        .where(eq(adminUsersTable.userId, targetUserId))
         .limit(1);
 
       if (wantsAdmin) {
@@ -300,11 +265,11 @@ adminRouter.patch(
           const [createdRole] = await tx
             .insert(adminUsersTable)
             .values({
-              clerkUserId: targetUserId,
+              userId: targetUserId,
               grantedByUserId: actorId,
             })
             .onConflictDoNothing()
-            .returning({ clerkUserId: adminUsersTable.clerkUserId });
+            .returning({ userId: adminUsersTable.userId });
 
           if (createdRole) {
             await tx.insert(activityTable).values({
@@ -324,7 +289,7 @@ adminRouter.patch(
         .from(adminUsersTable)
         .innerJoin(
           userProfilesTable,
-          eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+          eq(adminUsersTable.userId, userProfilesTable.userId),
         )
         .where(eq(userProfilesTable.accountStatus, "active"));
       if (Number(adminCount?.count ?? 0) <= 1) {
@@ -333,7 +298,7 @@ adminRouter.patch(
 
       await tx
         .delete(adminUsersTable)
-        .where(eq(adminUsersTable.clerkUserId, targetUserId));
+        .where(eq(adminUsersTable.userId, targetUserId));
       await tx.insert(activityTable).values({
         ownerUserId: actorId,
         kind: "admin_role_revoked",
@@ -387,7 +352,7 @@ adminRouter.patch(
           accountStatus: userProfilesTable.accountStatus,
         })
         .from(userProfilesTable)
-        .where(eq(userProfilesTable.clerkUserId, userId))
+        .where(eq(userProfilesTable.userId, userId))
         .limit(1);
       if (!target) return { error: "not_found" as const };
       if (target.accountStatus === "deletion_pending") {
@@ -398,9 +363,9 @@ adminRouter.patch(
       }
 
       const [role] = await tx
-        .select({ clerkUserId: adminUsersTable.clerkUserId })
+        .select({ userId: adminUsersTable.userId })
         .from(adminUsersTable)
-        .where(eq(adminUsersTable.clerkUserId, userId))
+        .where(eq(adminUsersTable.userId, userId))
         .limit(1);
       if (
         body.data.status === "suspended" &&
@@ -412,7 +377,7 @@ adminRouter.patch(
           .from(adminUsersTable)
           .innerJoin(
             userProfilesTable,
-            eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+            eq(adminUsersTable.userId, userProfilesTable.userId),
           )
           .where(eq(userProfilesTable.accountStatus, "active"));
         if (Number(activeAdminCount?.count ?? 0) <= 1) {
@@ -423,7 +388,7 @@ adminRouter.patch(
       await tx
         .update(userProfilesTable)
         .set({ accountStatus: body.data.status, updatedAt: new Date() })
-        .where(eq(userProfilesTable.clerkUserId, userId));
+        .where(eq(userProfilesTable.userId, userId));
       await tx.insert(activityTable).values({
         ownerUserId: actorId,
         kind:
@@ -495,15 +460,15 @@ adminRouter.delete(
           accountStatus: userProfilesTable.accountStatus,
         })
         .from(userProfilesTable)
-        .where(eq(userProfilesTable.clerkUserId, userId))
+        .where(eq(userProfilesTable.userId, userId))
         .limit(1);
       if (!target) return "not_found" as const;
       if (target.accountStatus === "deletion_pending") return "pending" as const;
 
       const [role] = await tx
-        .select({ clerkUserId: adminUsersTable.clerkUserId })
+        .select({ userId: adminUsersTable.userId })
         .from(adminUsersTable)
-        .where(eq(adminUsersTable.clerkUserId, userId))
+        .where(eq(adminUsersTable.userId, userId))
         .limit(1);
       if (target.accountStatus === "active" && role) {
         const [activeAdminCount] = await tx
@@ -511,7 +476,7 @@ adminRouter.delete(
           .from(adminUsersTable)
           .innerJoin(
             userProfilesTable,
-            eq(adminUsersTable.clerkUserId, userProfilesTable.clerkUserId),
+            eq(adminUsersTable.userId, userProfilesTable.userId),
           )
           .where(eq(userProfilesTable.accountStatus, "active"));
         if (Number(activeAdminCount?.count ?? 0) <= 1) return "last_admin" as const;
@@ -520,7 +485,7 @@ adminRouter.delete(
       await tx
         .update(userProfilesTable)
         .set({ accountStatus: "deletion_pending", updatedAt: new Date() })
-        .where(eq(userProfilesTable.clerkUserId, userId));
+        .where(eq(userProfilesTable.userId, userId));
       await tx.insert(activityTable).values({
         ownerUserId: actorId,
         kind: "admin_account_deletion_started",
@@ -550,18 +515,6 @@ adminRouter.delete(
       return;
     }
 
-    try {
-      await clerkClient.users.deleteUser(userId);
-    } catch (error) {
-      if (!isClerkNotFound(error)) {
-        req.log.error({ err: error, userId }, "Clerk account deletion is pending");
-        res.status(202).json(
-          DeleteAdminUserResponse.parse({ userId, status: "deletion_pending" }),
-        );
-        return;
-      }
-    }
-
     await db.transaction(async (tx) => {
       await tx.insert(activityTable).values({
         ownerUserId: actorId,
@@ -570,7 +523,7 @@ adminRouter.delete(
       });
       await tx
         .delete(userProfilesTable)
-        .where(eq(userProfilesTable.clerkUserId, userId));
+        .where(eq(userProfilesTable.userId, userId));
     });
 
     res.json(

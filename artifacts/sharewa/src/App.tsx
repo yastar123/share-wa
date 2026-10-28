@@ -1,9 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
-import { enUS, idID, zhCN } from '@clerk/localizations';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
 import {
   Activity, ArrowLeft, ArrowRight, Check, CheckCheck, ChevronDown,
   ContactRound, Languages, Link2, LockKeyhole, LogOut,
@@ -12,15 +8,16 @@ import {
 } from 'lucide-react';
 import {
   useGetAdminMe,
-  getGetConnectionStatusQueryKey, getGetDashboardActivityQueryKey, getGetDashboardSummaryQueryKey,
+  getGetConnectionStatusQueryKey, getGetCurrentUserQueryKey, getGetDashboardActivityQueryKey, getGetDashboardSummaryQueryKey,
   getGetProfileQueryKey, getListContactsQueryKey,
   getListMessagesQueryKey, useCreateContact, useDeleteContact,
   useDisconnectWhatsApp, useGetConnectionStatus, useGetDashboardActivity,
   useGetDashboardSummary, useGetProfile, useHealthCheck, useListContacts,
   useListMessages, useRequestPairingCode, useSendManualMessage,
+  useGetCurrentUser, useRegisterUser, useSignIn, useSignOut,
   useUpdateContact, useUpdateContactConsent, useUpdateProfile,
   type ActivityItem, type Contact, type Message,
-  type UserProfileLanguage,
+  type AuthUser, type UserProfileLanguage,
 } from '@workspace/api-client-react';
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -31,44 +28,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider, translate, translateActivitySummary, useAppLanguage, type AppLanguage } from '@/lib/i18n';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 20_000, retry: 1 } } });
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-const stripBase = (path: string) => basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path;
-
-const appearance = {
-  theme: shadcn,
-  cssLayerName: 'clerk',
-  options: {
-    logoPlacement: 'inside' as const,
-    logoLinkUrl: basePath || '/',
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
-  },
-  variables: {
-    colorPrimary: '#24dc68', colorForeground: '#e4f0e7', colorMutedForeground: '#8da094',
-    colorDanger: '#e5776c', colorBackground: '#0d1b12', colorInput: '#09160e',
-    colorInputForeground: '#e2eee5', colorNeutral: '#294334', fontFamily: 'DM Sans, sans-serif',
-    borderRadius: '0.7rem',
-  },
-  elements: {
-    rootBox: 'w-full flex justify-center',
-    cardBox: 'bg-[#0d1b12] rounded-2xl w-[440px] max-w-full overflow-hidden border border-[#294334]',
-    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    headerTitle: 'text-[#e4f0e7] font-bold', headerSubtitle: 'text-[#8da094]',
-    socialButtonsBlockButtonText: 'text-[#dce9df]', formFieldLabel: 'text-[#b4c4b8]',
-    footerActionLink: 'text-[#4be47c]', footerActionText: 'text-[#91a295]',
-    dividerText: 'text-[#829588]', identityPreviewEditButton: 'text-[#4be47c]',
-    formFieldSuccessText: 'text-[#66de8b]', alertText: 'text-[#e1ece4]',
-    logoBox: 'rounded-xl', logoImage: 'rounded-lg',
-    socialButtonsBlockButton: 'border-[#294334] bg-[#112219] hover:bg-[#183021]',
-    formButtonPrimary: 'bg-[#24dc68] text-[#07120b] hover:bg-[#52e982]',
-    formFieldInput: 'bg-[#09160e] border-[#294334] text-[#e2eee5]',
-    footerAction: 'text-[#91a295]', dividerLine: 'bg-[#294334]',
-    alert: 'bg-[#17271c] border-[#35563d]', otpCodeFieldInput: 'bg-[#09160e] border-[#294334]',
-    formFieldRow: 'text-[#b4c4b8]', main: 'text-[#e4f0e7]',
-  },
-};
 
 const landingText: Record<AppLanguage, { eyebrow: string; title: string; line: string; subtitle: string; cta: string; signIn: string; proof: string }> = {
   id: { eyebrow: 'RUANG KERJA WHATSAPP', title: 'Semua pesan Anda', line: 'dalam satu layar.', subtitle: 'Kelola kontak dengan izin yang tercatat, hubungkan WhatsApp Anda sendiri, dan kirim pesan satu per satu dengan tenang.', cta: 'Mulai sekarang', signIn: 'Masuk', proof: 'Akun Anda · Izin tercatat · Pesan satu per satu' },
@@ -113,15 +73,16 @@ const pageNames: Record<string, string> = { '/dashboard': 'Your workspace', '/co
 
 function Workspace({ children, path }: { children: ReactNode; path: string }) {
   const [, setLocation] = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const currentUser = useGetCurrentUser();
+  const signOut = useSignOut();
+  const cache = useQueryClient();
   const { language, setLanguage, t } = useAppLanguage();
   const profile = useGetProfile();
   const adminAccess = useGetAdminMe();
   useEffect(() => {
     if (profile.data?.language && profile.data.language !== language) setLanguage(profile.data.language);
   }, [language, profile.data?.language, setLanguage]);
-  const shortName = profile.data?.fullName || user?.fullName || user?.primaryEmailAddress?.emailAddress || 'Your account';
+  const shortName = profile.data?.fullName || currentUser.data?.fullName || currentUser.data?.email || 'Your account';
   return <div className="app-layout">
     <aside className="sidebar">
       <div className="side-brand"><Link href="/dashboard" className="brand"><Brand /></Link></div>
@@ -129,7 +90,7 @@ function Workspace({ children, path }: { children: ReactNode; path: string }) {
       <nav className="nav-links">{routes.map(({ href, label, icon: Icon }) => <Link href={href} className={`nav-link${path === href ? ' active' : ''}`} key={href} data-testid={`link-nav-${label.toLowerCase()}`}><Icon size={17} /><span>{t(label)}</span></Link>)}{adminAccess.data?.isAdmin && <Link href="/admin" className={`nav-link${path === '/admin' ? ' active' : ''}`} data-testid="link-nav-admin"><ShieldCheck size={17} /><span>{t('Admin')}</span></Link>}</nav>
       <div className="side-spacer" />
       <button className="side-account" type="button" onClick={() => setLocation('/settings')} data-testid="button-open-profile"><span className="avatar">{shortName.slice(0, 1).toUpperCase()}</span><span style={{ minWidth: 0, flex: 1 }}><span className="account-name" style={{ display: 'block' }}>{shortName}</span><span className="account-id" style={{ display: 'block' }}>{t('Personal workspace')}</span></span><ChevronDown size={14} className="muted" /></button>
-      <button className="nav-link" style={{ border: 0, width: '100%', marginTop: 8 }} onClick={() => signOut({ redirectUrl: basePath || '/' })} data-testid="button-sign-out"><LogOut size={16} /><span>{t('Sign out')}</span></button>
+      <button className="nav-link" style={{ border: 0, width: '100%', marginTop: 8 }} disabled={signOut.isPending} onClick={() => signOut.mutate(undefined, { onSuccess: () => { cache.clear(); setLocation('/'); } })} data-testid="button-sign-out"><LogOut size={16} /><span>{t('Sign out')}</span></button>
     </aside>
     <main className="workspace-main">
       <header className="workspace-header"><div><div className="page-kicker">ShareWa / {t('Workspace')}</div><h1 className="page-title" data-testid="text-page-title">{t(pageNames[path] || 'Workspace')}</h1></div><div className="header-actions"><span className="status-line hide-mobile"><span className="state-dot live" /><span className="small-caption">{t('Private workspace')}</span></span></div></header>
@@ -139,7 +100,10 @@ function Workspace({ children, path }: { children: ReactNode; path: string }) {
 }
 
 function ProtectedPage({ path, children }: { path: string; children: ReactNode }) {
-  return <><Show when="signed-in"><Workspace path={path}>{children}</Workspace></Show><Show when="signed-out"><Redirect to="/" /></Show></>;
+  const currentUser = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
+  if (currentUser.isLoading) return <LoadingPanel />;
+  if (!currentUser.data) return <Redirect to="/sign-in" />;
+  return <Workspace path={path}>{children}</Workspace>;
 }
 
 function LoadingPanel() {
@@ -386,62 +350,99 @@ function SettingsPage() {
   </>;
 }
 
-function SignInPage() {
-  return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}><div className="sign-in-layout"><div className="sign-in-main"><Link href="/" className="brand" style={{ justifyContent: 'center' }}><Brand /></Link><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div><DemoAccessPanel /></div></main>;
-}
-function SignUpPage() {
-  return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}><div><Link href="/" className="brand" style={{ justifyContent: 'center', marginBottom: 22 }}><Brand /></Link><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div></main>;
+function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
+  const { t } = useAppLanguage();
+  const [, setLocation] = useLocation();
+  const cache = useQueryClient();
+  const currentUser = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
+  const signIn = useSignIn();
+  const register = useRegisterUser();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const isSignUp = mode === 'sign-up';
+  const isPending = signIn.isPending || register.isPending;
+  const mutationError = isSignUp ? register.error : signIn.error;
+  const errorMessage = authErrorMessage(mutationError, t('Check your details and try again.'));
+
+  useEffect(() => {
+    if (currentUser.data) setLocation('/dashboard');
+  }, [currentUser.data, setLocation]);
+
+  const completeSignIn = (user: AuthUser) => {
+    cache.clear();
+    cache.setQueryData(getGetCurrentUserQueryKey(), user);
+    setLocation('/dashboard');
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSignUp) {
+      register.mutate(
+        { data: { fullName: fullName.trim(), email, password } },
+        { onSuccess: completeSignIn },
+      );
+    } else {
+      signIn.mutate({ data: { email, password } }, { onSuccess: completeSignIn });
+    }
+  };
+
+  return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}>
+    <div className={`sign-in-layout${isSignUp ? ' sign-up-layout' : ''}`}>
+      <div className="sign-in-main">
+        <Link href="/" className="brand" style={{ justifyContent: 'center' }}><Brand /></Link>
+        <form className="panel panel-pad auth-form" onSubmit={submit}>
+          <div className="section-heading"><div><h1 className="section-title">{t(isSignUp ? 'Create your ShareWa account' : 'Welcome back')}</h1><p className="section-subtitle">{t(isSignUp ? 'A focused workspace for permission-aware messaging' : 'Sign in to return to your ShareWa workspace')}</p></div></div>
+          {isSignUp && <div className="form-field"><label className="field-label" htmlFor="auth-full-name">{t('Full name')}</label><input className="field" id="auth-full-name" autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={1} maxLength={120} required data-testid="input-auth-name" /></div>}
+          <div className="form-field"><label className="field-label" htmlFor="auth-email">{t('Email')}</label><input className="field" id="auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required data-testid="input-auth-email" /></div>
+          <div className="form-field"><label className="field-label" htmlFor="auth-password">{t('Password')}</label><input className="field" id="auth-password" type="password" autoComplete={isSignUp ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} required data-testid="input-auth-password" />{isSignUp && <div className="small-caption" style={{ marginTop: 7 }}>{t('Use at least 12 characters.')}</div>}</div>
+          {mutationError && <p className="dialog-error" role="alert">{errorMessage}</p>}
+          <button className="btn btn-primary auth-submit" type="submit" disabled={isPending} data-testid="button-auth-submit">{isPending ? t('Please wait…') : t(isSignUp ? 'Create account' : 'Sign in')}<ArrowRight size={15} /></button>
+          <p className="auth-switch">{isSignUp ? t('Already have an account?') : t('New to ShareWa?')} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{t(isSignUp ? 'Sign in' : 'Create account')}</Link></p>
+        </form>
+      </div>
+      {!isSignUp && <DemoAccessPanel />}
+    </div>
+  </main>;
 }
 function HomeRedirect() {
-  return <><Show when="signed-in"><Redirect to="/dashboard" /></Show><Show when="signed-out"><Landing /></Show></>;
+  const currentUser = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
+  return currentUser.data ? <Redirect to="/dashboard" /> : <Landing />;
 }
+
+function authErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === 'object' && 'data' in error) {
+    const data = (error as { data?: unknown }).data;
+    if (data && typeof data === 'object' && 'error' in data) {
+      const message = (data as { error?: unknown }).error;
+      if (typeof message === 'string') return message;
+    }
+  }
+  return fallback;
+}
+
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const client = useQueryClient();
-  const previousUserId = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (previousUserId.current !== undefined && previousUserId.current !== userId) client.clear();
-      previousUserId.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, client]);
-  return null;
-}
-
-function ClerkRoutes() {
-  const { language, t } = useAppLanguage();
-  const [, setLocation] = useLocation();
-  const clerkLocale = language === 'id' ? idID : language === 'zh' ? zhCN : enUS;
-  return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{
-    ...clerkLocale,
-    signIn: { ...(clerkLocale.signIn ?? {}), start: { ...(clerkLocale.signIn?.start ?? {}), title: t('Welcome back'), subtitle: t('Sign in to return to your ShareWa workspace') } },
-    signUp: { ...(clerkLocale.signUp ?? {}), start: { ...(clerkLocale.signUp?.start ?? {}), title: t('Create your ShareWa account'), subtitle: t('A focused workspace for permission-aware messaging') } },
-  }} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}>
-    <ClerkQueryClientCacheInvalidator />
-    <RoutedErrorBoundary><Switch>
-      <Route path="/" component={HomeRedirect} />
-      <Route path="/sign-in/*?" component={SignInPage} />
-      <Route path="/sign-up/*?" component={SignUpPage} />
-      <Route path="/demo/admin">{() => <DemoWorkspace role="admin" />}</Route>
-      <Route path="/demo/user">{() => <DemoWorkspace role="user" />}</Route>
-      <Route path="/dashboard">{() => <ProtectedPage path="/dashboard"><DashboardPage /></ProtectedPage>}</Route>
-      <Route path="/contacts">{() => <ProtectedPage path="/contacts"><ContactsPage /></ProtectedPage>}</Route>
-      <Route path="/messages">{() => <ProtectedPage path="/messages"><MessagesPage /></ProtectedPage>}</Route>
-      <Route path="/settings">{() => <ProtectedPage path="/settings"><SettingsPage /></ProtectedPage>}</Route>
-      <Route path="/admin">{() => <ProtectedPage path="/admin"><AdminPage /></ProtectedPage>}</Route>
-      <Route><div className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}><EmptyState title={t('Page not found')} copy={t('This ShareWa workspace page does not exist.')} action={<Link href="/" className="btn btn-primary"><ArrowLeft size={14} /> {t('Back to home')}</Link>} /></div></Route>
-    </Switch></RoutedErrorBoundary>
-  </ClerkProvider>;
+function AppRoutes() {
+  const { t } = useAppLanguage();
+  return <RoutedErrorBoundary><Switch>
+    <Route path="/" component={HomeRedirect} />
+    <Route path="/sign-in/*?">{() => <AuthPage mode="sign-in" />}</Route>
+    <Route path="/sign-up/*?">{() => <AuthPage mode="sign-up" />}</Route>
+    <Route path="/demo/admin">{() => <DemoWorkspace role="admin" />}</Route>
+    <Route path="/demo/user">{() => <DemoWorkspace role="user" />}</Route>
+    <Route path="/dashboard">{() => <ProtectedPage path="/dashboard"><DashboardPage /></ProtectedPage>}</Route>
+    <Route path="/contacts">{() => <ProtectedPage path="/contacts"><ContactsPage /></ProtectedPage>}</Route>
+    <Route path="/messages">{() => <ProtectedPage path="/messages"><MessagesPage /></ProtectedPage>}</Route>
+    <Route path="/settings">{() => <ProtectedPage path="/settings"><SettingsPage /></ProtectedPage>}</Route>
+    <Route path="/admin">{() => <ProtectedPage path="/admin"><AdminPage /></ProtectedPage>}</Route>
+    <Route><div className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}><EmptyState title={t('Page not found')} copy={t('This ShareWa workspace page does not exist.')} action={<Link href="/" className="btn btn-primary"><ArrowLeft size={14} /> {t('Back to home')}</Link>} /></div></Route>
+  </Switch></RoutedErrorBoundary>;
 }
 function App() {
-  if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
-  return <LanguageProvider><QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={basePath}><ClerkRoutes /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider></LanguageProvider>;
+  return <LanguageProvider><QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={basePath}><AppRoutes /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider></LanguageProvider>;
 }
 export default App;

@@ -59,7 +59,7 @@ export function DemoAccessPanel() {
         })}
       </div>
       <div className="demo-safety-note">
-        Kredensial ini hanya contoh tampilan, bukan login Clerk. Pratinjau bersifat
+        Kredensial ini hanya contoh tampilan, bukan akun untuk masuk. Pratinjau bersifat
         read-only dan memakai data fiktif.
       </div>
     </section>

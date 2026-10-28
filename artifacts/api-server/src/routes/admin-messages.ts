@@ -73,7 +73,7 @@ router.get("/admin/messages", async (req, res): Promise<void> => {
       .from(messagesTable)
       .innerJoin(
         userProfilesTable,
-        eq(messagesTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(messagesTable.ownerUserId, userProfilesTable.userId),
       )
       .where(where)
       .orderBy(desc(messagesTable.createdAt))
@@ -84,7 +84,7 @@ router.get("/admin/messages", async (req, res): Promise<void> => {
       .from(messagesTable)
       .innerJoin(
         userProfilesTable,
-        eq(messagesTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(messagesTable.ownerUserId, userProfilesTable.userId),
       )
       .where(where),
   ]);
@@ -139,7 +139,7 @@ router.post("/admin/messages", async (req, res): Promise<void> => {
       accountStatus: userProfilesTable.accountStatus,
     })
     .from(userProfilesTable)
-    .where(eq(userProfilesTable.clerkUserId, parsed.data.ownerUserId))
+    .where(eq(userProfilesTable.userId, parsed.data.ownerUserId))
     .limit(1);
   if (!owner) {
     res.status(404).json({ error: "Akun pengirim tidak ditemukan." });
@@ -263,7 +263,7 @@ router.delete(
       .from(messagesTable)
       .innerJoin(
         userProfilesTable,
-        eq(messagesTable.ownerUserId, userProfilesTable.clerkUserId),
+        eq(messagesTable.ownerUserId, userProfilesTable.userId),
       )
       .where(eq(messagesTable.id, params.data.messageId))
       .limit(1);

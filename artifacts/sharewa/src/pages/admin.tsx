@@ -1,7 +1,6 @@
 import './admin.css';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useUser } from '@clerk/react';
 import {
   Activity, AlertTriangle, Check, ChevronLeft, ChevronRight, CircleHelp,
   ContactRound, LoaderCircle, LockKeyhole, MessageSquareText, Pause, Play,
@@ -11,7 +10,7 @@ import {
   getGetAdminOverviewQueryKey, getGetAdminSystemSettingsQueryKey,
   getListAdminContactsQueryKey, getListAdminMessagesQueryKey, getListAdminUsersQueryKey,
   useDeleteAdminContact, useDeleteAdminMessage, useDeleteAdminUser,
-  useDisconnectAdminUserWhatsApp, useGetAdminMe, useGetAdminOverview,
+  useDisconnectAdminUserWhatsApp, useGetAdminMe, useGetAdminOverview, useGetCurrentUser,
   useGetAdminSystemSettings, useListAdminContacts, useListAdminMessages,
   useListAdminUsers, useSendAdminMessage, useUpdateAdminContact,
   useUpdateAdminSystemSettings, useUpdateAdminUserRole, useUpdateAdminUserStatus,
@@ -50,7 +49,7 @@ function AdminMetric({ label, value, detail, icon: Icon, accent = false, testId 
 
 export function AdminPage() {
   const { language, t } = useAppLanguage();
-  const { user: clerkUser } = useUser();
+  const currentUser = useGetCurrentUser();
   const cache = useQueryClient();
   const [tab, setTab] = useState<Tab>('overview');
   const [offset, setOffset] = useState(0);
@@ -122,7 +121,7 @@ export function AdminPage() {
 
   const setAccountStatus = (account: (typeof accountList)[number]) => {
     const next = account.accountStatus === 'active' ? 'suspended' : 'active';
-    if (next === 'suspended' && account.userId === clerkUser?.id) {
+    if (next === 'suspended' && account.userId === currentUser.data?.userId) {
       setFeedback({ tone: 'error', message: t('You cannot suspend your own account.') }); return;
     }
     if (next === 'suspended' && lastActiveAdminRemovalBlocked(account)) {
@@ -136,7 +135,7 @@ export function AdminPage() {
   };
 
   const removeAccount = (account: (typeof accountList)[number]) => {
-    if (account.userId === clerkUser?.id) { setFeedback({ tone: 'error', message: t('You cannot delete your own account.') }); return; }
+    if (account.userId === currentUser.data?.userId) { setFeedback({ tone: 'error', message: t('You cannot delete your own account.') }); return; }
     if (lastActiveAdminRemovalBlocked(account)) { setFeedback({ tone: 'error', message: t('The last active administrator cannot be deleted.') }); return; }
     const pendingDelete = account.accountStatus === 'deletion_pending';
     const prompt = pendingDelete ? t('Retry permanent deletion for this account?') : t('Permanently delete this account and all stored contacts and message data?');
@@ -286,7 +285,7 @@ export function AdminPage() {
             <div className="panel admin-user-table-wrap"><table className="data-table admin-user-table" data-testid="admin-user-table">
               <thead><tr><th>{t('Account')}</th><th>{t('Connection')}</th><th>{t('Status')}</th><th>{t('Role')}</th><th>{t('Joined')}</th><th>{t('Actions')}</th></tr></thead>
               <tbody>{displayAccounts.map((account) => {
-                const ownAccount = account.userId === clerkUser?.id;
+                const ownAccount = account.userId === currentUser.data?.userId;
                 const safeRoleLock = lastActiveAdminRemovalBlocked(account);
                 const pending = updateRole.isPending || updateStatus.isPending || deleteUser.isPending || disconnect.isPending;
                 return <tr key={account.userId} data-testid={`admin-user-row-${account.userId}`}>

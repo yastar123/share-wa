@@ -16,7 +16,7 @@ router.get("/profile", async (_req, res): Promise<void> => {
   const [profile] = await db
     .select()
     .from(userProfilesTable)
-    .where(eq(userProfilesTable.clerkUserId, userId))
+    .where(eq(userProfilesTable.userId, userId))
     .limit(1);
 
   if (!profile) {
@@ -45,7 +45,7 @@ router.patch("/profile", async (req, res): Promise<void> => {
   const [profile] = await db
     .update(userProfilesTable)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(userProfilesTable.clerkUserId, userId))
+    .where(eq(userProfilesTable.userId, userId))
     .returning();
 
   if (!profile) {
