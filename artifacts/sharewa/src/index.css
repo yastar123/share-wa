@@ -150,6 +150,7 @@ a { color: inherit; text-decoration: none; }
 .side-label { color: #62766a; font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; padding: 10px 12px; }
 .nav-links { display: grid; gap: 4px; }
 .nav-link { height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 12px; color: #8fa296; border-radius: 9px; font-size: 13px; transition: color .15s, background .15s; }
+.nav-links > button.nav-link { width: 100%; border: 0; background: transparent; text-align: left; }
 .nav-link:hover { color: #deeee2; background: rgba(45,83,57,.22); }
 .nav-link.active { color: #c8f5d4; background: rgba(36,220,102,.1); box-shadow: inset 2px 0 #2ada6a; }
 .nav-link.active svg { color: #35e475; }
@@ -169,6 +170,8 @@ a { color: inherit; text-decoration: none; }
 .section-subtitle { color: #73867a; font-size: 12px; margin: 5px 0 0; }
 .panel { border: 1px solid rgba(157,197,170,.14); border-radius: 14px; background: linear-gradient(145deg, rgba(17,34,24,.9), rgba(12,25,17,.9)); }
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.dashboard-metric-grid { gap: 18px; }
+.dashboard-balance-section { margin: 24px 0; padding: 24px; }
 .metric { min-height: 126px; padding: 18px; position: relative; overflow: hidden; }
 .metric::after { content: ''; width: 110px; height: 110px; border: 1px solid rgba(62,193,101,.12); border-radius: 50%; position: absolute; right: -46px; top: -38px; }
 .metric-label { color: #89a091; font-size: 11px; }
@@ -275,7 +278,7 @@ a { color: inherit; text-decoration: none; }
   .topbar { height: 64px; padding: 0 18px; }.topbar-right { gap: 9px; }.topbar .btn { min-height: 35px; padding: 0 11px; font-size: 11px; }
   .landing { min-height: calc(100dvh - 64px); align-items: flex-start; }.landing-inner { padding: 21vh 0 110px; width: calc(100% - 40px); }.hero-title { font-size: clamp(42px, 11vw, 66px); }.hero-lede { max-width: 430px; font-size: 14px; }.hero-visual { top: 67%; right: -50%; transform: scale(.78); opacity: .23; }.landing-foot { bottom: 22px; gap: 7px; font-size: 8px; }.landing-foot span + span::before { margin-right: 7px; }
   .app-layout { display: block; padding-bottom: 67px; }.sidebar { height: 64px; padding: 0 10px; position: fixed; top: auto; bottom: 0; left: 0; right: 0; flex-direction: row; justify-content: space-around; border-right: 0; border-top: 1px solid rgba(157,197,170,.16); background: rgba(7,16,12,.96); backdrop-filter: blur(14px); }.side-brand,.side-label,.side-spacer,.side-account,.sign-out-nav { display: none; }.nav-links { display: flex; justify-content: space-around; width: 100%; gap: 0; }.nav-link { height: 56px; min-width: 0; flex: 1; flex-direction: column; justify-content: center; gap: 4px; padding: 4px 3px; border-radius: 8px; font-size: 9px; }.nav-link.active { box-shadow: inset 0 2px #2ada6a; }.nav-link svg { width: 17px; height: 17px; }
-  .workspace-main { padding: 0 16px 28px; }.workspace-header { min-height: 84px; }.page-title { font-size: 22px; }.page-content { padding-top: 20px; }.metric-grid { gap: 8px; }.metric { padding: 14px; min-height: 112px; }.metric-value { font-size: 25px; }.metric-label { font-size: 10px; }.metric-note { font-size: 9px; }.panel-pad { padding: 16px; }
+  .workspace-main { padding: 0 16px 28px; }.workspace-header { min-height: 84px; }.page-title { font-size: 22px; }.page-content { padding-top: 20px; }.metric-grid { gap: 8px; }.dashboard-metric-grid { gap: 12px; }.dashboard-balance-section { margin: 18px 0; padding: 16px; }.metric { padding: 14px; min-height: 112px; }.metric-value { font-size: 25px; }.metric-label { font-size: 10px; }.metric-note { font-size: 9px; }.panel-pad { padding: 16px; }
   .section-heading { align-items: flex-start; }.section-heading .toolbar { justify-content: flex-end; }.toolbar { gap: 7px; }.search-field { width: 100%; }.contacts-toolbar { display: grid; grid-template-columns: 1fr auto; width: 100%; }.contacts-toolbar .search-field { grid-column: 1 / -1; }
   .message-layout { grid-template-columns: 1fr; min-height: unset; }.message-list-panel { max-height: 245px; overflow: auto; }.conversation { min-height: 460px; }.settings-grid { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; gap: 0; }.workspace-header .header-actions { gap: 5px; }.hide-mobile { display: none; }
 }

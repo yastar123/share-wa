@@ -74,8 +74,6 @@ export interface UserRegistration {
   /** @maxLength 16 */
   referralCode?: string;
   termsAccepted: boolean;
-  /** @maxLength 4096 */
-  captchaToken?: string;
 }
 
 export interface AuthUser {

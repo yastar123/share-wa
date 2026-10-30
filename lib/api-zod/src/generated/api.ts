@@ -57,8 +57,6 @@ export const registerUserBodyPasswordMax = 128;
 
 export const registerUserBodyReferralCodeMax = 16;
 
-export const registerUserBodyCaptchaTokenMax = 4096;
-
 
 
 export const RegisterUserBody = zod.object({
@@ -67,8 +65,7 @@ export const RegisterUserBody = zod.object({
   "email": zod.string().email().max(registerUserBodyEmailMax),
   "password": zod.string().min(registerUserBodyPasswordMin).max(registerUserBodyPasswordMax),
   "referralCode": zod.string().max(registerUserBodyReferralCodeMax).optional(),
-  "termsAccepted": zod.boolean(),
-  "captchaToken": zod.string().max(registerUserBodyCaptchaTokenMax).optional()
+  "termsAccepted": zod.boolean()
 })
 
 export const RegisterUserResponse = zod.object({

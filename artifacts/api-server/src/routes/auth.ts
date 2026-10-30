@@ -71,25 +71,6 @@ function setSessionCookie(res: Response, token: string): void {
   });
 }
 
-async function verifyTurnstile(
-  token: string | undefined,
-  remoteIp: string | undefined,
-): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  if (!token) return false;
-  const body = new URLSearchParams({ secret, response: token });
-  if (remoteIp) body.set("remoteip", remoteIp);
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!response.ok) throw new Error(`Turnstile verification returned HTTP ${response.status}.`);
-  const result = await response.json() as { success?: unknown };
-  return result.success === true;
-}
-
 async function getAuthUser(userId: string) {
   const [row] = await db
     .select({
@@ -178,20 +159,6 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
   if (!parsed.data.termsAccepted) {
     res.status(400).json({ error: "Persetujuan Syarat & Ketentuan dan Kebijakan Privasi diperlukan." });
-    return;
-  }
-  if (process.env.NODE_ENV === "production" && !process.env.TURNSTILE_SECRET_KEY) {
-    res.status(503).json({ error: "Verifikasi keamanan belum dikonfigurasi oleh administrator." });
-    return;
-  }
-  try {
-    if (!(await verifyTurnstile(parsed.data.captchaToken, req.ip))) {
-      res.status(400).json({ error: "Verifikasi bahwa Anda bukan robot belum berhasil." });
-      return;
-    }
-  } catch (error) {
-    req.log.error({ err: error }, "Cloudflare Turnstile verification failed");
-    res.status(503).json({ error: "Verifikasi keamanan sedang tidak tersedia." });
     return;
   }
   const email = normalizeEmail(parsed.data.email);

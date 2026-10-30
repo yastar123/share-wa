@@ -24,7 +24,7 @@ const PAGE_SIZE = 12;
 const locales = { id: 'id-ID', en: 'en-US', zh: 'zh-CN' } as const;
 const connectionKeys = ['connected', 'disconnected', 'awaitingLink', 'reconnecting', 'error'] as const;
 
-type Tab = 'overview' | 'accounts' | 'contacts' | 'messages' | 'withdrawals' | 'system';
+export type AdminTab = 'overview' | 'accounts' | 'contacts' | 'messages' | 'withdrawals' | 'system';
 const currencyScale = { IDR: 1, USD: 100, CNY: 100 } as const;
 
 function dateLabel(value: string | null | undefined, language: keyof typeof locales) {
@@ -51,11 +51,10 @@ function AdminMetric({ label, value, detail, icon: Icon, accent = false, testId 
   </div>;
 }
 
-export function AdminPage() {
+export function AdminPage({ tab }: { tab: AdminTab }) {
   const { language, t } = useAppLanguage();
   const currentUser = useGetCurrentUser();
   const cache = useQueryClient();
-  const [tab, setTab] = useState<Tab>('overview');
   const [offset, setOffset] = useState(0);
   const [contactSearch, setContactSearch] = useState('');
   const [contactConsent, setContactConsent] = useState('all');
@@ -297,13 +296,6 @@ export function AdminPage() {
       {feedback.tone === 'success' ? <Check size={15} /> : <AlertTriangle size={15} />}{feedback.message}
       <button type="button" aria-label={t('Dismiss notification')} onClick={() => setFeedback(null)} data-testid="button-dismiss-admin-feedback">×</button>
     </div>}
-
-    <nav className="admin-tabs" aria-label={t('Admin sections')} data-testid="admin-tabs">
-      {([
-        ['overview', Activity, 'Overview'], ['accounts', Users, 'Accounts'], ['contacts', ContactRound, 'Contacts'],
-        ['messages', MessageSquareText, 'Messages'], ['withdrawals', WalletCards, 'Withdrawals'], ['system', Shield, 'System'],
-      ] as const).map(([key, Icon, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)} data-testid={`tab-admin-${key}`}><Icon size={15} />{t(label)}</button>)}
-    </nav>
 
     {tab === 'overview' && <div className="admin-tab-content" data-testid="admin-overview-section">
       {overview.isLoading ? <div className="admin-skeleton-metrics">{[0, 1, 2, 3].map((item) => <div className="panel admin-skeleton-card" key={item}><i /><i /><i /></div>)}</div> :

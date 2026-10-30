@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   Activity, ArrowLeft, ArrowRight, Bell, Check, CheckCheck, ChevronDown, Eye, EyeOff,
@@ -28,7 +28,7 @@ import {
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { QRCodeSVG } from 'qrcode.react';
-import AdminPage from '@/pages/admin';
+import AdminPage, { type AdminTab } from '@/pages/admin';
 import ContactsPage from '@/pages/contacts';
 import WithdrawalPage from '@/pages/withdrawal';
 import { Toaster } from '@/components/ui/toaster';
@@ -39,7 +39,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 20_000, retry: 1 } } });
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 const supportTelegramUrl = (() => {
   const configuredUrl = import.meta.env.VITE_SUPPORT_TELEGRAM_URL?.trim();
   if (!configuredUrl) return null;
@@ -55,20 +54,6 @@ const supportTelegramUrl = (() => {
   console.error('VITE_SUPPORT_TELEGRAM_URL must use https://t.me or https://telegram.me.');
   return null;
 })();
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (container: HTMLElement, options: {
-        sitekey: string;
-        callback: (token: string) => void;
-        'expired-callback': () => void;
-        'error-callback': () => void;
-      }) => string;
-      remove: (widgetId: string) => void;
-    };
-  }
-}
 
 const landingText: Record<AppLanguage, { eyebrow: string; title: string; line: string; subtitle: string; cta: string; signIn: string; proof: string; authEyebrow: string; authTitle: string; authSubtitle: string; authFeatures: [string, string, string] }> = {
   id: { eyebrow: 'RUANG KERJA WHATSAPP', title: 'Semua pesan Anda', line: 'dalam satu layar.', subtitle: 'Kelola kontak dengan izin yang tercatat, hubungkan WhatsApp Anda sendiri, dan kirim pesan satu per satu dengan tenang.', cta: 'Mulai sekarang', signIn: 'Masuk', proof: 'Akun Anda · Izin tercatat · Pesan satu per satu', authEyebrow: 'RUANG KERJA WHATSAPP ANDA', authTitle: 'Percakapan terasa lebih teratur.', authSubtitle: 'Kelola kontak, izin, dan pesan dalam satu ruang kerja yang tetap berada di bawah kendali Anda.', authFeatures: ['Izin kontak tercatat dengan jelas', 'Satu pesan untuk satu penerima', 'Akun WhatsApp tetap milik Anda'] },
@@ -111,9 +96,22 @@ const routes = [
   { href: '/team', label: 'Referral team', icon: Users },
   { href: '/settings', label: 'Settings', icon: Settings2 },
 ];
+const adminSections = [
+  { key: 'overview', label: 'Overview', icon: Activity },
+  { key: 'accounts', label: 'Accounts', icon: Users },
+  { key: 'contacts', label: 'Contacts', icon: ContactRound },
+  { key: 'messages', label: 'Messages', icon: MessageSquareText },
+  { key: 'withdrawals', label: 'Withdrawals', icon: WalletCards },
+  { key: 'system', label: 'System', icon: Settings2 },
+] as const satisfies readonly { key: AdminTab; label: string; icon: typeof Activity }[];
 const pageNames: Record<string, string> = { '/dashboard': 'Your workspace', '/contacts': 'Contact book', '/messages': 'Message history', '/withdraw': 'Withdrawal', '/team': 'Referral team', '/settings': 'Preferences', '/admin': 'Admin console' };
 
-function Workspace({ children, path }: { children: ReactNode; path: string }) {
+function Workspace({ children, path, adminSection, onAdminSectionChange }: {
+  children: ReactNode;
+  path: string;
+  adminSection?: AdminTab;
+  onAdminSectionChange?: (section: AdminTab) => void;
+}) {
   const [, setLocation] = useLocation();
   const currentUser = useGetCurrentUser();
   const signOut = useSignOut();
@@ -131,8 +129,10 @@ function Workspace({ children, path }: { children: ReactNode; path: string }) {
   return <div className="app-layout">
     <aside className="sidebar">
       <div className="side-brand"><Link href="/dashboard" className="brand"><Brand /></Link></div>
-      <div className="side-label">{t('Workspace')}</div>
-      <nav className="nav-links">{routes.map(({ href, label, icon: Icon }) => <Link href={href} className={`nav-link${path === href ? ' active' : ''}`} key={href} data-testid={`link-nav-${label.toLowerCase()}`}><Icon size={17} /><span>{t(label)}</span></Link>)}{adminAccess.data?.isAdmin && <Link href="/admin" className={`nav-link${path === '/admin' ? ' active' : ''}`} data-testid="link-nav-admin"><ShieldCheck size={17} /><span>{t('Admin')}</span></Link>}</nav>
+      <div className="side-label">{adminSection ? t('Admin console') : t('Workspace')}</div>
+      <nav className="nav-links">{adminSection && onAdminSectionChange
+        ? adminSections.map(({ key, label, icon: Icon }) => <button type="button" className={`nav-link${adminSection === key ? ' active' : ''}`} key={key} aria-current={adminSection === key ? 'page' : undefined} onClick={() => onAdminSectionChange(key)} data-testid={`tab-admin-${key}`}><Icon size={17} /><span>{t(label)}</span></button>)
+        : <>{routes.map(({ href, label, icon: Icon }) => <Link href={href} className={`nav-link${path === href ? ' active' : ''}`} key={href} data-testid={`link-nav-${label.toLowerCase()}`}><Icon size={17} /><span>{t(label)}</span></Link>)}{adminAccess.data?.isAdmin && <Link href="/admin" className={`nav-link${path === '/admin' ? ' active' : ''}`} data-testid="link-nav-admin"><ShieldCheck size={17} /><span>{t('Admin')}</span></Link>}</>}</nav>
       <div className="side-spacer" />
       <button className="side-account" type="button" onClick={() => setLocation('/settings')} data-testid="button-open-profile"><span className="avatar">{shortName.slice(0, 1).toUpperCase()}</span><span style={{ minWidth: 0, flex: 1 }}><span className="account-name" style={{ display: 'block' }}>{shortName}</span><span className="account-id" style={{ display: 'block' }}>{t('Personal workspace')}</span></span><ChevronDown size={14} className="muted" /></button>
       <button className="nav-link sign-out-nav" style={{ border: 0, width: '100%', marginTop: 8 }} disabled={signOut.isPending} onClick={() => signOut.mutate(undefined, { onSuccess: () => { cache.clear(); setLocation('/'); } })} data-testid="button-sign-out"><LogOut size={16} /><span>{t('Sign out')}</span></button>
@@ -149,6 +149,16 @@ function ProtectedPage({ path, children }: { path: string; children: ReactNode }
   if (currentUser.isLoading) return <LoadingPanel />;
   if (!currentUser.data) return <Redirect to="/sign-in" />;
   return <Workspace path={path}>{children}</Workspace>;
+}
+
+function AdminProtectedPage() {
+  const currentUser = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
+  const [section, setSection] = useState<AdminTab>('overview');
+  if (currentUser.isLoading) return <LoadingPanel />;
+  if (!currentUser.data) return <Redirect to="/sign-in" />;
+  return <Workspace path="/admin" adminSection={section} onAdminSectionChange={setSection}>
+    <AdminPage tab={section} />
+  </Workspace>;
 }
 
 function LoadingPanel() {
@@ -262,7 +272,7 @@ function DashboardPage() {
   };
   const activities = activity.data || [];
   return <><div className="section-heading"><div><h2 className="section-title">{t('Account at a glance')}</h2><p className="section-subtitle">{t('A clear view of your connection, permission, and delivery.')}</p></div><div className="small-caption">{t('Service')} {health.data?.status || (health.isError ? t('unavailable') : t('checking'))}</div></div>
-    {summary.isLoading ? <div className="metric-grid">{[0,1,2,3].map((i) => <div className="panel metric" key={i}><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line" style={{ width: '48%', height: 23 }} /></div>)}</div> : summary.isError ? <ErrorBox onRetry={refresh} /> : <div className="metric-grid">
+    {summary.isLoading ? <div className="metric-grid dashboard-metric-grid">{[0,1,2,3].map((i) => <div className="panel metric" key={i}><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line" style={{ width: '48%', height: 23 }} /></div>)}</div> : summary.isError ? <ErrorBox onRetry={refresh} /> : <div className="metric-grid dashboard-metric-grid">
       <Metric metricId="all-contacts" label={t('All contacts')} value={data?.totalContacts ?? 0} note={t('In your contact book')} />
       <Metric metricId="permission-recorded" label={t('Permission recorded')} value={data?.optedInContacts ?? 0} note={t('Eligible for one-to-one messages')} highlight />
       <Metric metricId="messages-delivered" label={t('Messages delivered')} value={data?.messagesDelivered ?? 0} note={t('{{sent}} sent · {{failed}} failed', { sent: data?.messagesSent ?? 0, failed: data?.messagesFailed ?? 0 })} />
@@ -270,9 +280,9 @@ function DashboardPage() {
       <Metric metricId="messages-queued" label={t('Messages queued')} value={data?.messagesQueued ?? 0} note={t('Waiting for processing')} />
       <Metric metricId="messages-delivered-7d" label={t('Delivered in the last 7 days')} value={data?.messagesDeliveredLast7Days ?? 0} note={t('{{count}} failed in the same period', { count: data?.messagesFailedLast7Days ?? 0 })} />
     </div>}
-    {wallet.data && <section className="panel panel-pad" style={{ marginBottom: 16 }}>
+    {wallet.data && <section className="panel panel-pad dashboard-balance-section">
       <div className="section-heading"><div><h2 className="section-title">{t('Available balance')}</h2><p className="section-subtitle">{t('Earned from successful sends and eligible referral messages.')}</p></div><Link href="/withdraw" className="btn btn-primary btn-sm">{t('Withdraw balance')}<ArrowRight size={14} /></Link></div>
-      <div className="metric-grid">
+      <div className="metric-grid dashboard-metric-grid">
         <div className="panel metric"><div className="metric-label">{t('Available balance')}</div><div className="metric-value">{formatCurrencyAmount(wallet.data.availableBalance, wallet.data.currency, language)}</div><div className="metric-note">{t('Total earned')}: {formatCurrencyAmount(wallet.data.totalEarned, wallet.data.currency, language)}</div></div>
         <div className="panel metric"><div className="metric-label">{t('Referral members')}</div><div className="metric-value">{wallet.data.referralCount.toLocaleString(dateLocales[language])}</div><div className="metric-note">{t('People who joined with your link')}</div></div>
         <div className="panel metric"><div className="metric-label">{t('Referral earnings')}</div><div className="metric-value">{formatCurrencyAmount(wallet.data.referralEarnings, wallet.data.currency, language)}</div><div className="metric-note">{wallet.data.referralMessages} {t('messages sent by your referral team')}</div></div>
@@ -628,8 +638,6 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [showPassword, setShowPassword] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const captchaContainer = useRef<HTMLDivElement>(null);
   const isSignUp = mode === 'sign-up';
   const isPending = signIn.isPending || register.isPending;
   const mutationError = isSignUp ? register.error : signIn.error;
@@ -645,38 +653,6 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     const referralFromUrl = new URLSearchParams(window.location.search).get('ref');
     if (referralFromUrl) setReferralCode(referralFromUrl);
   }, [isSignUp]);
-  useEffect(() => {
-    if (!isSignUp || !turnstileSiteKey || !captchaContainer.current) return;
-    let widgetId: string | undefined;
-    const container = captchaContainer.current;
-    const renderWidget = () => {
-      if (!window.turnstile || widgetId || !container.isConnected) return;
-      widgetId = window.turnstile.render(container, {
-        sitekey: turnstileSiteKey,
-        callback: setCaptchaToken,
-        'expired-callback': () => setCaptchaToken(''),
-        'error-callback': () => setCaptchaToken(''),
-      });
-    };
-    const existingScript = document.querySelector<HTMLScriptElement>('#sharewa-turnstile');
-    if (existingScript) {
-      existingScript.addEventListener('load', renderWidget);
-      renderWidget();
-    } else {
-      const script = document.createElement('script');
-      script.id = 'sharewa-turnstile';
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      script.async = true;
-      script.defer = true;
-      script.addEventListener('load', renderWidget);
-      document.head.appendChild(script);
-    }
-    return () => {
-      if (widgetId) window.turnstile?.remove(widgetId);
-      existingScript?.removeEventListener('load', renderWidget);
-    };
-  }, [isSignUp]);
-
   const completeSignIn = (user: AuthUser) => {
     cache.clear();
     cache.setQueryData(getGetCurrentUserQueryKey(), user);
@@ -696,7 +672,6 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           password,
           referralCode: referralCode.trim() || undefined,
           termsAccepted,
-          captchaToken: captchaToken || undefined,
         } },
         { onSuccess: completeSignIn },
       );
@@ -709,9 +684,6 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setUsername(demoEmail);
     setPassword(demoPassword);
   };
-  const requiresCaptcha = import.meta.env.PROD;
-  const captchaReady = !requiresCaptcha || (!!turnstileSiteKey && !!captchaToken);
-
   return <main className="auth-shell">
     <div className="auth-layout">
       <aside className="auth-showcase">
@@ -746,11 +718,10 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         {isSignUp && <div className="form-field"><label className="field-label" htmlFor="auth-referral">{t('Referral code')} <span className="muted">{t('(optional)')}</span></label><input className="field" id="auth-referral" value={referralCode} onChange={(event) => setReferralCode(event.target.value.toUpperCase())} maxLength={16} placeholder={t('Have a friend code?')} /></div>}
         {isSignUp && <>
           <div className="notice">{t('Use an email you can access if you need to reset your password.')}</div>
-          <div className="form-field"><span className="field-label">{t('One last step: verify you are human')}</span>{turnstileSiteKey ? <div ref={captchaContainer} /> : <div className="small-caption">{t('Human verification is configured by the administrator.')}</div>}</div>
           <label className="small-caption" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}><input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} required /><span>{t('I agree to the')} <Link href="/terms" className="text-link">{t('Terms & Conditions')}</Link> {t('and')} <Link href="/privacy" className="text-link">{t('Privacy Policy')}</Link>.</span></label>
         </>}
         {mutationError && <p className="dialog-error" role="alert">{errorMessage}</p>}
-        <button className="btn btn-primary auth-submit" type="submit" disabled={isPending || isSignUp && (!termsAccepted || !captchaReady)} data-testid="button-auth-submit">{isPending ? t('Please wait…') : t(isSignUp ? 'Create account' : 'Sign in')}<ArrowRight size={15} /></button>
+        <button className="btn btn-primary auth-submit" type="submit" disabled={isPending || isSignUp && !termsAccepted} data-testid="button-auth-submit">{isPending ? t('Please wait…') : t(isSignUp ? 'Create account' : 'Sign in')}<ArrowRight size={15} /></button>
         <p className="auth-switch">{isSignUp ? t('Already have an account?') : t('New to ShareWa?')} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{t(isSignUp ? 'Sign in' : 'Create account')}</Link></p>
         {!isSignUp && <p className="auth-switch"><Link href="/reset-password">{t('Forgot password?')}</Link></p>}
       </form>
@@ -866,7 +837,7 @@ function AppRoutes() {
     <Route path="/team">{() => <ProtectedPage path="/team"><ReferralPage /></ProtectedPage>}</Route>
     <Route path="/messages">{() => <ProtectedPage path="/messages"><MessagesPage /></ProtectedPage>}</Route>
     <Route path="/settings">{() => <ProtectedPage path="/settings"><SettingsPage /></ProtectedPage>}</Route>
-    <Route path="/admin">{() => <ProtectedPage path="/admin"><AdminPage /></ProtectedPage>}</Route>
+    <Route path="/admin" component={AdminProtectedPage} />
     <Route><div className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}><EmptyState title={t('Page not found')} copy={t('This ShareWa workspace page does not exist.')} action={<Link href="/" className="btn btn-primary"><ArrowLeft size={14} /> {t('Back to home')}</Link>} /></div></Route>
   </Switch></RoutedErrorBoundary>;
 }

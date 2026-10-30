@@ -15,7 +15,7 @@ ShareWa is a consent-first workspace for managing contacts, linking your own Wha
 - For Nginx-hosted VPS deployments, add `deploy/nginx-sharewa-location.conf` inside the site's existing `server` block so same-origin `/api/` requests are proxied to the API on port 3000. Validate with `nginx -t` and reload Nginx after installing it.
 - Replit provides PostgreSQL through the runtime-managed `DATABASE_URL`. No Clerk account or key is used.
 - Add a stable `SESSION_SECRET`, `SHAREWA_ADMIN_EMAIL`, and `SHAREWA_ADMIN_PASSWORD` through Replit Secrets. The API creates or updates the initial administrator at startup when the email is valid and the password is 12–128 characters; otherwise the API stays online without an admin account.
-- Configure `TURNSTILE_SECRET_KEY` and the frontend `VITE_TURNSTILE_SITE_KEY` to enable registration verification in production. Set `PUBLIC_APP_URL` to the canonical site URL for complete referral links.
+- Set `PUBLIC_APP_URL` to the canonical site URL for complete referral links.
 - Set the frontend `VITE_SUPPORT_TELEGRAM_URL` to an HTTPS `t.me` support link to show the dashboard help action.
 - Configure `RESEND_API_KEY`, `MAIL_FROM`, and `PUBLIC_APP_URL` to enable one-time password reset email links. New registrations require an email address; reset tokens expire after 30 minutes and can be used once.
 - User passwords are stored as scrypt hashes. Login sessions use expiring, HttpOnly cookies and hashed tokens in PostgreSQL.

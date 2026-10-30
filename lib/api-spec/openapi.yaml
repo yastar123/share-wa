@@ -1333,7 +1333,6 @@ components:
         password: { type: string, minLength: 12, maxLength: 128 }
         referralCode: { type: string, maxLength: 16 }
         termsAccepted: { type: boolean }
-        captchaToken: { type: string, maxLength: 4096 }
       required: [fullName, username, email, password, termsAccepted]
     AuthUser:
       type: object
