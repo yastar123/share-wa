@@ -23,7 +23,7 @@ import {
   getListNotificationsQueryKey, useListNotifications, useMarkNotificationRead, useMarkAllNotificationsRead,
   useRequestPasswordReset, useConfirmPasswordReset,
   type ActivityItem, type Contact, type Message,
-  type AuthUser, type UserProfileLanguage, type MessageBatchResult, type Notification,
+  ResponseParseError, type AuthUser, type UserProfileLanguage, type MessageBatchResult, type Notification,
 } from '@workspace/api-client-react';
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -70,10 +70,10 @@ declare global {
   }
 }
 
-const landingText: Record<AppLanguage, { eyebrow: string; title: string; line: string; subtitle: string; cta: string; signIn: string; proof: string }> = {
-  id: { eyebrow: 'RUANG KERJA WHATSAPP', title: 'Semua pesan Anda', line: 'dalam satu layar.', subtitle: 'Kelola kontak dengan izin yang tercatat, hubungkan WhatsApp Anda sendiri, dan kirim pesan satu per satu dengan tenang.', cta: 'Mulai sekarang', signIn: 'Masuk', proof: 'Akun Anda · Izin tercatat · Pesan satu per satu' },
-  en: { eyebrow: 'A WHATSAPP WORKSPACE', title: 'Every message,', line: 'on one screen.', subtitle: 'Keep your permission-aware contacts in view, connect your own WhatsApp account, and send one message at a time.', cta: 'Get started', signIn: 'Sign in', proof: 'Your account · Recorded permission · One-to-one messages' },
-  zh: { eyebrow: 'WHATSAPP 工作空间', title: '所有消息，', line: '尽在一屏。', subtitle: '清晰管理已授权联系人，连接您自己的 WhatsApp 账户，并一次发送一条消息。', cta: '开始使用', signIn: '登录', proof: '您的账户 · 记录授权 · 一对一消息' },
+const landingText: Record<AppLanguage, { eyebrow: string; title: string; line: string; subtitle: string; cta: string; signIn: string; proof: string; authEyebrow: string; authTitle: string; authSubtitle: string; authFeatures: [string, string, string] }> = {
+  id: { eyebrow: 'RUANG KERJA WHATSAPP', title: 'Semua pesan Anda', line: 'dalam satu layar.', subtitle: 'Kelola kontak dengan izin yang tercatat, hubungkan WhatsApp Anda sendiri, dan kirim pesan satu per satu dengan tenang.', cta: 'Mulai sekarang', signIn: 'Masuk', proof: 'Akun Anda · Izin tercatat · Pesan satu per satu', authEyebrow: 'RUANG KERJA WHATSAPP ANDA', authTitle: 'Percakapan terasa lebih teratur.', authSubtitle: 'Kelola kontak, izin, dan pesan dalam satu ruang kerja yang tetap berada di bawah kendali Anda.', authFeatures: ['Izin kontak tercatat dengan jelas', 'Satu pesan untuk satu penerima', 'Akun WhatsApp tetap milik Anda'] },
+  en: { eyebrow: 'A WHATSAPP WORKSPACE', title: 'Every message,', line: 'on one screen.', subtitle: 'Keep your permission-aware contacts in view, connect your own WhatsApp account, and send one message at a time.', cta: 'Get started', signIn: 'Sign in', proof: 'Your account · Recorded permission · One-to-one messages', authEyebrow: 'YOUR WHATSAPP WORKSPACE', authTitle: 'Make every conversation more intentional.', authSubtitle: 'Keep contacts, consent, and messages in one workspace that stays under your control.', authFeatures: ['Clear records of contact permission', 'One message to one recipient', 'Your WhatsApp account stays yours'] },
+  zh: { eyebrow: 'WHATSAPP 工作空间', title: '所有消息，', line: '尽在一屏。', subtitle: '清晰管理已授权联系人，连接您自己的 WhatsApp 账户，并一次发送一条消息。', cta: '开始使用', signIn: '登录', proof: '您的账户 · 记录授权 · 一对一消息', authEyebrow: '您的 WHATSAPP 工作空间', authTitle: '让每次沟通都清晰有序。', authSubtitle: '在一个由您掌控的工作空间中管理联系人、授权和消息。', authFeatures: ['清晰记录联系人授权', '一次只向一位联系人发送消息', 'WhatsApp 账户始终由您掌控'] },
 };
 
 function Brand({ light = false }: { light?: boolean }) {
@@ -614,7 +614,8 @@ function SettingsPage() {
 }
 
 function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
-  const { t } = useAppLanguage();
+  const { language, t } = useAppLanguage();
+  const copy = landingText[language];
   const [, setLocation] = useLocation();
   const cache = useQueryClient();
   const currentUser = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
@@ -632,7 +633,9 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const isSignUp = mode === 'sign-up';
   const isPending = signIn.isPending || register.isPending;
   const mutationError = isSignUp ? register.error : signIn.error;
-  const errorMessage = authErrorMessage(mutationError, t('Check your details and try again.'));
+  const errorMessage = mutationError instanceof ResponseParseError
+    ? t('The sign-in service returned an unexpected response. Please try again shortly.')
+    : authErrorMessage(mutationError, t('Check your details and try again.'));
 
   useEffect(() => {
     if (currentUser.data) setLocation('/dashboard');
@@ -709,10 +712,32 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const requiresCaptcha = import.meta.env.PROD;
   const captchaReady = !requiresCaptcha || (!!turnstileSiteKey && !!captchaToken);
 
-  return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}>
-    <div className="sign-in-main" style={{ width: '100%', maxWidth: 440 }}>
-      <Link href="/" className="brand" style={{ justifyContent: 'center', marginBottom: 20 }}><Brand /></Link>
-      <form className="panel panel-pad auth-form" onSubmit={submit}>
+  return <main className="auth-shell">
+    <div className="auth-layout">
+      <aside className="auth-showcase">
+        <Link href="/" className="brand auth-brand"><Brand /></Link>
+        <div className="auth-showcase-content">
+          <span className="auth-eyebrow"><span className="eyebrow-dot" />{copy.authEyebrow}</span>
+          <h2>{copy.authTitle}</h2>
+          <p>{copy.authSubtitle}</p>
+          <div className="auth-preview" aria-hidden="true">
+            <div className="auth-preview-orbit auth-preview-orbit-one" />
+            <div className="auth-preview-orbit auth-preview-orbit-two" />
+            <div className="auth-preview-card">
+              <div className="auth-preview-heading"><span className="auth-preview-mark"><MessageSquareText size={14} /></span><span>{t('Recent activity')}</span><span className="auth-preview-live" /></div>
+              <div className="auth-preview-message"><span className="auth-preview-avatar">A</span><span><strong>{t('Permission recorded')}</strong><small>{t('Contact book')}</small></span><ShieldCheck size={15} /></div>
+              <div className="auth-preview-message"><span className="auth-preview-avatar alt">W</span><span><strong>{t('One linked account, under your control.')}</strong><small>{t('Private workspace')}</small></span><Activity size={15} /></div>
+            </div>
+          </div>
+          <ul className="auth-feature-list">{copy.authFeatures.map((feature, index) => {
+            const Icon = [ShieldCheck, ContactRound, MessageSquareText][index];
+            return <li key={feature}><span><Icon size={15} /></span>{feature}</li>;
+          })}</ul>
+        </div>
+        <div className="auth-showcase-footer"><ShieldCheck size={15} />{t('Built around permission, not volume.')}</div>
+      </aside>
+      <section className="auth-content">
+        <form className="auth-form" onSubmit={submit}>
         <div className="section-heading"><div><h1 className="section-title">{t(isSignUp ? 'Create your ShareWa account' : 'Welcome back')}</h1><p className="section-subtitle">{t(isSignUp ? 'A focused workspace for permission-aware messaging' : 'Sign in to return to your ShareWa workspace')}</p></div></div>
         {isSignUp && <div className="form-field"><label className="field-label" htmlFor="auth-full-name">{t('Full name')}</label><input className="field" id="auth-full-name" autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={1} maxLength={120} required data-testid="input-auth-name" /></div>}
         <div className="form-field"><label className="field-label" htmlFor="auth-username">{t(isSignUp ? 'Username' : 'Username or email')}</label><input className="field" id="auth-username" autoComplete="username" value={username} onChange={(event) => setUsername(isSignUp ? event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') : event.target.value)} minLength={isSignUp ? 3 : 1} maxLength={isSignUp ? 28 : 254} required data-testid="input-auth-username" placeholder={t(isSignUp ? 'Your username' : 'Username or email')} />{isSignUp && <div className="small-caption" style={{ marginTop: 7 }}>{t('Use lowercase letters, numbers, and underscores.')}</div>}</div>
@@ -729,7 +754,8 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         <p className="auth-switch">{isSignUp ? t('Already have an account?') : t('New to ShareWa?')} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{t(isSignUp ? 'Sign in' : 'Create account')}</Link></p>
         {!isSignUp && <p className="auth-switch"><Link href="/reset-password">{t('Forgot password?')}</Link></p>}
       </form>
-      {!isSignUp && import.meta.env.DEV && <DemoAccessPanel onFill={fillDemo} />}
+      {!isSignUp && import.meta.env.DEV && <div className="auth-demo-wrap"><DemoAccessPanel onFill={fillDemo} /></div>}
+      </section>
     </div>
   </main>;
 }

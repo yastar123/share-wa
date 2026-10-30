@@ -10,6 +10,7 @@ ShareWa is a consent-first workspace for managing contacts, linking your own Wha
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm db:push` — load root `.env`, create the configured PostgreSQL database if it does not exist, push the schema, sync the configured admin account, and verify login plus admin access
 - Replit provides PostgreSQL through the runtime-managed `DATABASE_URL`. No Clerk account or key is used.
 - Add a stable `SESSION_SECRET`, `SHAREWA_ADMIN_EMAIL`, and `SHAREWA_ADMIN_PASSWORD` through Replit Secrets. The API creates or updates the initial administrator at startup when the email is valid and the password is 12–128 characters; otherwise the API stays online without an admin account.
 - Configure `TURNSTILE_SECRET_KEY` and the frontend `VITE_TURNSTILE_SITE_KEY` to enable registration verification in production. Set `PUBLIC_APP_URL` to the canonical site URL for complete referral links.

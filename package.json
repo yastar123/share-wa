@@ -13,6 +13,7 @@
     "dev": "tsx server.ts",
     "build": "npm run build --workspaces --if-present",
     "start": "tsx server.ts",
+    "db:push": "pnpm --filter @workspace/api-server run db:push-admin",
     "typecheck": "tsc --build",
     "lint": "tsc --build"
   },
