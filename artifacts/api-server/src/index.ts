@@ -3,23 +3,15 @@ import { logger } from "./lib/logger";
 import { ensureInitialAdmin } from "./lib/auth";
 import { restoreWhatsAppSessions } from "./lib/whatsapp";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+const port = Number(process.env["PORT"] || 3000);
 
 async function startServer(): Promise<void> {
-  await ensureInitialAdmin();
-  const server = app.listen(port, () => {
+  try {
+    await ensureInitialAdmin();
+  } catch (error) {
+    logger.warn({ err: error }, "Failed to ensure initial admin");
+  }
+  const server = app.listen(port, "0.0.0.0", () => {
     logger.info({ port }, "Server listening");
     void restoreWhatsAppSessions().catch((error: unknown) => {
       logger.error({ err: error }, "Failed to restore WhatsApp sessions");
@@ -35,3 +27,4 @@ void startServer().catch((error: unknown) => {
   logger.error({ err: error }, "Failed to initialize ShareWa");
   process.exit(1);
 });
+

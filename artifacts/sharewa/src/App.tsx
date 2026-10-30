@@ -22,10 +22,12 @@ import {
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import AdminPage from '@/pages/admin';
-import { DemoAccessPanel, DemoWorkspace } from '@/pages/demo';
+import ContactsPage from '@/pages/contacts';
+import WithdrawalPage from '@/pages/withdrawal';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider, translate, translateActivitySummary, useAppLanguage, type AppLanguage } from '@/lib/i18n';
+import { DemoAccessPanel } from '@/components/demo-access';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 20_000, retry: 1 } } });
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -208,46 +210,8 @@ function Dialog({ title, description, onClose, children }: { title: string; desc
   return <div className="dialog-backdrop" onMouseDown={(e) => { if (e.currentTarget === e.target) onClose(); }}><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div className="dialog-head"><div><h2 id="dialog-title" className="dialog-title">{title}</h2><p className="dialog-description">{description}</p></div><button className="icon-btn" type="button" aria-label={t('Close dialog')} onClick={onClose} data-testid="button-close-dialog"><X size={17} /></button></div>{children}</section></div>;
 }
 
-function ContactsPage() {
-  const { language, t } = useAppLanguage();
-  const [search, setSearch] = useState('');
-  const [consentFilter, setConsentFilter] = useState('all');
-  const [editing, setEditing] = useState<Contact | null>(null);
-  const [adding, setAdding] = useState(false);
-  const contactsQuery = useListContacts({ search: search || undefined, consent: consentFilter as 'all' | 'opted_in' | 'opted_out' | 'pending' });
-  const create = useCreateContact();
-  const update = useUpdateContact();
-  const remove = useDeleteContact();
-  const consent = useUpdateContactConsent();
-  const cache = useQueryClient();
-  const toast = useToastMessage();
-  const refresh = () => void contactsQuery.refetch();
-  const mutateConsent = (contact: Contact, status: 'opted_in' | 'opted_out') => {
-    const source = status === 'opted_in' ? window.prompt(t('Where and when did this contact give permission?')) : undefined;
-    if (status === 'opted_in' && !source?.trim()) return;
-    consent.mutate({ contactId: contact.id, data: { status, ...(source ? { source: source.trim() } : {}) } }, { onSuccess: () => { void cache.invalidateQueries({ queryKey: getListContactsQueryKey() }); void cache.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); void cache.invalidateQueries({ queryKey: getGetDashboardActivityQueryKey() }); toast.notify(status === 'opted_in' ? t('Permission recorded.') : t('Contact opted out.')); } });
-  };
-  const submitContact = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    if (editing) update.mutate({ contactId: editing.id, data: { displayName: String(data.get('displayName')).trim() } }, { onSuccess: () => { void cache.invalidateQueries({ queryKey: getListContactsQueryKey() }); setEditing(null); toast.notify(t('Contact updated.')); } });
-    else create.mutate({ data: { displayName: String(data.get('displayName')).trim(), phone: String(data.get('phone')).trim(), consentConfirmed: data.get('confirmed') === 'on', consentSource: String(data.get('source')).trim() } }, { onSuccess: () => { void cache.invalidateQueries({ queryKey: getListContactsQueryKey() }); void cache.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); void cache.invalidateQueries({ queryKey: getGetDashboardActivityQueryKey() }); setAdding(false); toast.notify(t('Contact added with permission record.')); } });
-  };
-  const contacts = contactsQuery.data || [];
-  return <>
-    <div className="section-heading"><div><h2 className="section-title">{t('Contacts with context')}</h2><p className="section-subtitle">{t('Permission status stays visible next to every person.')}</p></div><div className="toolbar"><div className="search-field"><Search size={15} /><input className="field" aria-label={t('Search contacts')} placeholder={t('Search name or phone')} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="input-search-contacts" /></div><select aria-label={t('Filter by permission')} className="select" style={{ width: 'auto', minWidth: 135 }} value={consentFilter} onChange={(e) => setConsentFilter(e.target.value)} data-testid="select-consent-filter"><option value="all">{t('All contacts')}</option><option value="opted_in">{t('Permission recorded')}</option><option value="opted_out">{t('Opted out')}</option><option value="pending">{t('Not confirmed')}</option></select><button className="btn btn-primary" type="button" onClick={() => setAdding(true)} data-testid="button-add-contact"><Plus size={15} /> {t('Add contact')}</button></div></div>
-    {contactsQuery.isLoading ? <LoadingPanel /> : contactsQuery.isError ? <ErrorBox onRetry={refresh} /> : contacts.length === 0 ? <section className="panel"><EmptyState title={t(search || consentFilter !== 'all' ? 'No matching contacts' : 'Start with a person who said yes')} copy={t(search || consentFilter !== 'all' ? 'Try another search or permission filter.' : 'Record the source of consent when you add someone. You will only be able to message opted-in contacts.')} action={!(search || consentFilter !== 'all') ? <button className="btn btn-primary" type="button" onClick={() => setAdding(true)}><Plus size={14} /> {t('Add your first contact')}</button> : undefined} /></section> :
-      <div className="panel table-wrap"><table className="data-table"><thead><tr><th>{t('Contact')}</th><th>{t('Phone')}</th><th>{t('Permission')}</th><th>{t('Source')}</th><th>{t('Added')}</th><th style={{ textAlign: 'right' }}>{t('Actions')}</th></tr></thead><tbody>{contacts.map((contact) => <tr key={contact.id} data-testid={`row-contact-${contact.id}`}><td><div className="contact-cell"><span className="contact-initial">{contact.displayName.slice(0, 1).toUpperCase()}</span><span className="contact-name">{contact.displayName}</span></div></td><td className="mono">{contact.phone}</td><td><Badge status={contact.consentStatus} /></td><td>{contact.consentSource || <span className="muted">—</span>}</td><td>{formatCompact(contact.createdAt, language)}</td><td><div className="row-actions">{contact.consentStatus === 'opted_in' ? <button className="btn btn-secondary btn-sm" disabled={consent.isPending} onClick={() => mutateConsent(contact, 'opted_out')} type="button" data-testid={`button-opt-out-${contact.id}`}>{t('Opt out')}</button> : <button className="btn btn-secondary btn-sm" disabled={consent.isPending} onClick={() => mutateConsent(contact, 'opted_in')} type="button" data-testid={`button-record-consent-${contact.id}`}>{t('Record yes')}</button>}<button type="button" className="icon-btn" title={t('Edit name')} onClick={() => setEditing(contact)} data-testid={`button-edit-contact-${contact.id}`}><Pencil size={14} /></button><button type="button" className="icon-btn danger" title={t('Delete contact')} onClick={() => { if (window.confirm(t('Remove {{name}} and its message history?', { name: contact.displayName }))) remove.mutate({ contactId: contact.id }, { onSuccess: () => { void cache.invalidateQueries({ queryKey: getListContactsQueryKey() }); void cache.invalidateQueries({ queryKey: getListMessagesQueryKey() }); void cache.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); toast.notify(t('Contact removed.')); } }); }} data-testid={`button-delete-contact-${contact.id}`}><Trash2 size={14} /></button></div></td></tr>)}</tbody></table></div>}
-    {(adding || editing) && <Dialog title={t(editing ? 'Edit contact' : 'Add a contact')} description={t(editing ? 'Update the display name for this contact.' : 'Add one person and record how they gave permission.')} onClose={() => { setAdding(false); setEditing(null); }}>
-      <form onSubmit={submitContact}><div className="form-field"><label className="field-label" htmlFor="contact-name">{t('Name')}</label><input id="contact-name" name="displayName" className="field" defaultValue={editing?.displayName || ''} maxLength={120} required placeholder={t('Contact name')} data-testid="input-contact-name" /></div>
-        {!editing && <><div className="form-field"><label className="field-label" htmlFor="contact-phone">{t('Phone number')}</label><input id="contact-phone" name="phone" className="field" minLength={7} maxLength={20} required placeholder="+62 812 3456 7890" data-testid="input-contact-phone" /></div><div className="form-field"><label className="field-label" htmlFor="contact-source">{t('Permission source')}</label><input id="contact-source" name="source" className="field" minLength={2} maxLength={200} required placeholder={t('For example: asked in person, 12 June')} data-testid="input-consent-source" /></div><label className="check-line"><input type="checkbox" name="confirmed" required data-testid="checkbox-consent-confirmed" /><span>{t('I confirm this person gave permission to receive messages from me. I will respect any request to opt out.')}</span></label></>}
-        {(create.isError || update.isError) && <p className="dialog-error">{t('Could not save this contact. Please review the details and try again.')}</p>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}><button type="button" className="btn btn-secondary" onClick={() => { setAdding(false); setEditing(null); }}>{t('Cancel')}</button><button className="btn btn-primary" disabled={create.isPending || update.isPending} data-testid="button-save-contact">{create.isPending || update.isPending ? t('Saving…') : editing ? t('Save changes') : t('Add contact')}</button></div>
-      </form>
-    </Dialog>}
-    {toast.view}
-  </>;
-}
+
+
 
 function MessagesPage() {
   const { language, t } = useAppLanguage();
@@ -375,6 +339,8 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setLocation('/dashboard');
   };
 
+
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSignUp) {
@@ -387,24 +353,28 @@ function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     }
   };
 
+  const fillDemo = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+  };
+
   return <main className="shell" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}>
-    <div className={`sign-in-layout${isSignUp ? ' sign-up-layout' : ''}`}>
-      <div className="sign-in-main">
-        <Link href="/" className="brand" style={{ justifyContent: 'center' }}><Brand /></Link>
-        <form className="panel panel-pad auth-form" onSubmit={submit}>
-          <div className="section-heading"><div><h1 className="section-title">{t(isSignUp ? 'Create your ShareWa account' : 'Welcome back')}</h1><p className="section-subtitle">{t(isSignUp ? 'A focused workspace for permission-aware messaging' : 'Sign in to return to your ShareWa workspace')}</p></div></div>
-          {isSignUp && <div className="form-field"><label className="field-label" htmlFor="auth-full-name">{t('Full name')}</label><input className="field" id="auth-full-name" autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={1} maxLength={120} required data-testid="input-auth-name" /></div>}
-          <div className="form-field"><label className="field-label" htmlFor="auth-email">{t('Email')}</label><input className="field" id="auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required data-testid="input-auth-email" /></div>
-          <div className="form-field"><label className="field-label" htmlFor="auth-password">{t('Password')}</label><input className="field" id="auth-password" type="password" autoComplete={isSignUp ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} required data-testid="input-auth-password" />{isSignUp && <div className="small-caption" style={{ marginTop: 7 }}>{t('Use at least 12 characters.')}</div>}</div>
-          {mutationError && <p className="dialog-error" role="alert">{errorMessage}</p>}
-          <button className="btn btn-primary auth-submit" type="submit" disabled={isPending} data-testid="button-auth-submit">{isPending ? t('Please wait…') : t(isSignUp ? 'Create account' : 'Sign in')}<ArrowRight size={15} /></button>
-          <p className="auth-switch">{isSignUp ? t('Already have an account?') : t('New to ShareWa?')} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{t(isSignUp ? 'Sign in' : 'Create account')}</Link></p>
-        </form>
-      </div>
-      {!isSignUp && <DemoAccessPanel />}
+    <div className="sign-in-main" style={{ width: '100%', maxWidth: 440 }}>
+      <Link href="/" className="brand" style={{ justifyContent: 'center', marginBottom: 20 }}><Brand /></Link>
+      <form className="panel panel-pad auth-form" onSubmit={submit}>
+        <div className="section-heading"><div><h1 className="section-title">{t(isSignUp ? 'Create your ShareWa account' : 'Welcome back')}</h1><p className="section-subtitle">{t(isSignUp ? 'A focused workspace for permission-aware messaging' : 'Sign in to return to your ShareWa workspace')}</p></div></div>
+        {isSignUp && <div className="form-field"><label className="field-label" htmlFor="auth-full-name">{t('Full name')}</label><input className="field" id="auth-full-name" autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={1} maxLength={120} required data-testid="input-auth-name" /></div>}
+        <div className="form-field"><label className="field-label" htmlFor="auth-email">{t('Email')}</label><input className="field" id="auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required data-testid="input-auth-email" /></div>
+        <div className="form-field"><label className="field-label" htmlFor="auth-password">{t('Password')}</label><input className="field" id="auth-password" type="password" autoComplete={isSignUp ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} required data-testid="input-auth-password" />{isSignUp && <div className="small-caption" style={{ marginTop: 7 }}>{t('Use at least 12 characters.')}</div>}</div>
+        {mutationError && <p className="dialog-error" role="alert">{errorMessage}</p>}
+        <button className="btn btn-primary auth-submit" type="submit" disabled={isPending} data-testid="button-auth-submit">{isPending ? t('Please wait…') : t(isSignUp ? 'Create account' : 'Sign in')}<ArrowRight size={15} /></button>
+        <p className="auth-switch">{isSignUp ? t('Already have an account?') : t('New to ShareWa?')} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{t(isSignUp ? 'Sign in' : 'Create account')}</Link></p>
+      </form>
+      {!isSignUp && <DemoAccessPanel onFill={fillDemo} />}
     </div>
   </main>;
 }
+
 function HomeRedirect() {
   const currentUser = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
   return currentUser.data ? <Redirect to="/dashboard" /> : <Landing />;
@@ -432,10 +402,9 @@ function AppRoutes() {
     <Route path="/" component={HomeRedirect} />
     <Route path="/sign-in/*?">{() => <AuthPage mode="sign-in" />}</Route>
     <Route path="/sign-up/*?">{() => <AuthPage mode="sign-up" />}</Route>
-    <Route path="/demo/admin">{() => <DemoWorkspace role="admin" />}</Route>
-    <Route path="/demo/user">{() => <DemoWorkspace role="user" />}</Route>
     <Route path="/dashboard">{() => <ProtectedPage path="/dashboard"><DashboardPage /></ProtectedPage>}</Route>
     <Route path="/contacts">{() => <ProtectedPage path="/contacts"><ContactsPage /></ProtectedPage>}</Route>
+    <Route path="/withdraw">{() => <ProtectedPage path="/withdraw"><WithdrawalPage /></ProtectedPage>}</Route>
     <Route path="/messages">{() => <ProtectedPage path="/messages"><MessagesPage /></ProtectedPage>}</Route>
     <Route path="/settings">{() => <ProtectedPage path="/settings"><SettingsPage /></ProtectedPage>}</Route>
     <Route path="/admin">{() => <ProtectedPage path="/admin"><AdminPage /></ProtectedPage>}</Route>

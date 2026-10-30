@@ -35,22 +35,33 @@ export function hashPassword(password: string): string {
 
 export function verifyPassword(password: string, storedHash: string): boolean {
   const [algorithm, encodedSalt, encodedKey] = storedHash.split("$");
-  if (algorithm !== "scrypt" || !encodedSalt || !encodedKey) return false;
+  logger.info({ algorithm, storedHash }, "Verifying password attempt");
+  if (algorithm !== "scrypt" || !encodedSalt || !encodedKey) {
+      logger.warn("Invalid hash format");
+      return false;
+  }
   try {
     const salt = Buffer.from(encodedSalt, "base64url");
     const expected = Buffer.from(encodedKey, "base64url");
-    if (salt.length !== 16 || expected.length !== 32) return false;
+    
     const actual = scryptSync(password, salt, expected.length, {
       N: 32_768,
       r: 8,
       p: 1,
       maxmem: 64 * 1024 * 1024,
     });
-    return timingSafeEqual(actual, expected);
-  } catch {
+    
+    const matches = timingSafeEqual(actual, expected);
+    if (!matches) {
+        logger.warn({ actual: actual.toString("base64url"), expected: expected.toString("base64url") }, "Password hash mismatch");
+    }
+    return matches;
+  } catch (e) {
+    logger.error({ err: e }, "Password verification threw error");
     return false;
   }
 }
+
 
 export function hashSessionToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -68,77 +79,74 @@ export async function createUserSession(userId: string): Promise<string> {
   return token;
 }
 
-export async function ensureInitialAdmin(): Promise<void> {
-  const email = normalizeEmail(process.env.SHAREWA_ADMIN_EMAIL ?? "");
-  const password = process.env.SHAREWA_ADMIN_PASSWORD ?? "";
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    logger.warn(
-      "Initial admin was not seeded: set SHAREWA_ADMIN_EMAIL to a valid address.",
-    );
-    return;
+async function seedAccount(tx: any, email: string, password: string, fullName: string, isAdmin: boolean) {
+  let [profile] = await tx
+    .select()
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.email, email))
+    .limit(1);
+
+  if (!profile) {
+    const [created] = await tx
+      .insert(userProfilesTable)
+      .values({
+        userId: `user_${randomUUID()}`,
+        email,
+        fullName,
+        username: email.split("@")[0] + "_" + randomBytes(3).toString("hex"),
+        passwordHash: hashPassword(password),
+        language: "id",
+      })
+      .returning();
+    profile = created;
+    logger.info({ email }, "Created seeded profile");
+  } else {
+    await tx
+      .update(userProfilesTable)
+      .set({
+        passwordHash: hashPassword(password),
+        accountStatus: "active",
+        updatedAt: new Date(),
+      })
+      .where(eq(userProfilesTable.userId, profile.userId));
+    logger.info({ email }, "Updated seeded profile password");
+    await tx.delete(authSessionsTable).where(eq(authSessionsTable.userId, profile.userId));
   }
-  if (password.length < 12 || Buffer.byteLength(password, "utf8") > 256) {
-    logger.warn(
-      "Initial admin was not seeded: SHAREWA_ADMIN_PASSWORD must be 12–128 characters.",
-    );
-    return;
-  }
 
-  await db.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(190131041)`);
-    let [profile] = await tx
-      .select()
-      .from(userProfilesTable)
-      .where(eq(userProfilesTable.email, email))
-      .limit(1);
-
-    if (!profile) {
-      const [created] = await tx
-        .insert(userProfilesTable)
-        .values({
-          userId: `user_${randomUUID()}`,
-          email,
-          fullName: "Administrator",
-          username: `admin_${randomBytes(5).toString("hex")}`,
-          passwordHash: hashPassword(password),
-          language: "id",
-        })
-        .returning();
-      profile = created;
-    } else {
-      const passwordMatches =
-        profile.passwordHash && verifyPassword(password, profile.passwordHash);
-      if (!passwordMatches || profile.accountStatus !== "active") {
-        await tx
-          .update(userProfilesTable)
-          .set({
-            passwordHash: passwordMatches
-              ? profile.passwordHash
-              : hashPassword(password),
-            accountStatus: "active",
-            updatedAt: new Date(),
-          })
-          .where(eq(userProfilesTable.userId, profile.userId));
-        if (!passwordMatches) {
-          await tx
-            .delete(authSessionsTable)
-            .where(eq(authSessionsTable.userId, profile.userId));
-        }
-      }
-    }
-
+  if (isAdmin) {
     const [existingRole] = await tx
       .select({ userId: adminUsersTable.userId })
       .from(adminUsersTable)
       .where(eq(adminUsersTable.userId, profile.userId))
       .limit(1);
+    
     if (!existingRole) {
       await tx.insert(adminUsersTable).values({ userId: profile.userId });
       await tx.insert(activityTable).values({
         ownerUserId: profile.userId,
         kind: "admin_role_granted",
-        summary: "Peran admin awal diaktifkan.",
+        summary: "Peran admin diaktifkan melalui seeding.",
       });
+      logger.info({ email }, "Admin role granted via seeding");
     }
+  }
+}
+
+export async function ensureInitialAdmin(): Promise<void> {
+  const adminEmail = normalizeEmail(process.env.SHAREWA_ADMIN_EMAIL ?? "");
+  const adminPassword = process.env.SHAREWA_ADMIN_PASSWORD ?? "";
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(190131041)`);
+
+    // 1. Seed Main Admin from .env
+    if (adminEmail && adminPassword.length >= 12) {
+      await seedAccount(tx, adminEmail, adminPassword, "Administrator", true);
+    }
+
+    // 2. Seed Demo Accounts
+    await seedAccount(tx, "admin.demo@sharewa.example", "DemoAdminPassword123", "Demo Admin", true);
+    await seedAccount(tx, "user.demo@sharewa.example", "DemoUserPassword123", "Demo User", false);
   });
 }
+

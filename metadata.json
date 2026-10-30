@@ -1,0 +1,6 @@
+{
+  "name": "ShareWa",
+  "description": "ShareWa helps you manage WhatsApp contacts with recorded permission, link your own account, and send deliberate one-to-one messages.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -42,22 +42,17 @@ export class WhatsAppConnectionError extends Error {
 
 const activeConnections = new Map<string, ActiveConnection>();
 const silentLogger = pino({ level: "silent" });
-const sessionSecret = process.env.SESSION_SECRET;
-const encryptionKey = sessionSecret
-  ? Buffer.from(
-      hkdfSync(
-        "sha256",
-        Buffer.from(sessionSecret, "utf8"),
-        Buffer.from("sharewa-session-storage-v1", "utf8"),
-        Buffer.from("baileys-auth-state", "utf8"),
-        32,
-      ),
-    )
-  : null;
+const sessionSecret = process.env.SESSION_SECRET || "sharewa-development-default-session-secret-key-32chars";
+const encryptionKey = Buffer.from(
+  hkdfSync(
+    "sha256",
+    Buffer.from(sessionSecret, "utf8"),
+    Buffer.from("sharewa-session-storage-v1", "utf8"),
+    Buffer.from("baileys-auth-state", "utf8"),
+    32,
+  ),
+);
 
-if (!encryptionKey) {
-  throw new Error("SESSION_SECRET is required to protect WhatsApp session data.");
-}
 
 function encodeJson(value: unknown): string {
   return JSON.stringify(value, BufferJSON.replacer);

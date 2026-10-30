@@ -24,6 +24,7 @@ import {
   verifyPassword,
 } from "../lib/auth";
 import { requireAuth } from "../middlewares/requireAuth";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -109,6 +110,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .from(userProfilesTable)
     .where(eq(userProfilesTable.email, email))
     .limit(1);
+  
+  logger.info({ email, foundProfile: !!profile }, "Login attempt profile fetch");
 
   const validPassword = verifyPassword(
     parsed.data.password,
