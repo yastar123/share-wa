@@ -3,11 +3,13 @@ import { z } from "zod/v4";
 import {
   boolean,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
+  varchar,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -43,6 +45,10 @@ export const userProfilesTable = pgTable("sharewa_user_profiles", {
   email: text("email").unique(),
   fullName: text("full_name").notNull().default("Pengguna baru"),
   username: text("username").notNull().unique(),
+  referralCode: varchar("referral_code", { length: 16 }).unique(),
+  referredByUserId: text("referred_by_user_id"),
+  preferredCurrency: text("preferred_currency").notNull().default("IDR"),
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
   passwordHash: text("password_hash"),
   telegramUsername: text("telegram_username"),
   language: text("language").notNull().default("id"),
@@ -153,6 +159,103 @@ export const authSessionsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("sharewa_auth_sessions_expiry_idx").on(table.expiresAt)],
+);
+
+export const passwordResetTokensTable = pgTable(
+  "sharewa_password_reset_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("sharewa_password_reset_expiry_idx").on(table.expiresAt)],
+);
+
+export const notificationsTable = pgTable(
+  "sharewa_notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("sharewa_notifications_owner_created_idx").on(table.ownerUserId, table.createdAt),
+    index("sharewa_notifications_owner_read_idx").on(table.ownerUserId, table.readAt),
+  ],
+);
+
+export const payoutPreferencesTable = pgTable("sharewa_payout_preferences", {
+  ownerUserId: text("owner_user_id")
+    .primaryKey()
+    .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
+  method: text("method").notNull(),
+  institution: text("institution").notNull(),
+  accountNumber: text("account_number").notNull(),
+  accountHolder: text("account_holder").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const walletLedgerTable = pgTable(
+  "sharewa_wallet_ledger",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull(),
+    kind: text("kind").notNull(),
+    sourceUserId: text("source_user_id").references(() => userProfilesTable.userId, {
+      onDelete: "set null",
+    }),
+    messageId: uuid("message_id").references(() => messagesTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("sharewa_wallet_ledger_message_kind_unique").on(table.messageId, table.kind),
+    index("sharewa_wallet_ledger_owner_created_idx").on(table.ownerUserId, table.createdAt),
+  ],
+);
+
+export const withdrawalsTable = pgTable(
+  "sharewa_withdrawals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => userProfilesTable.userId, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull(),
+    status: text("status").notNull().default("pending"),
+    payoutMethod: text("payout_method").notNull(),
+    payoutInstitution: text("payout_institution").notNull(),
+    payoutAccountNumber: text("payout_account_number").notNull(),
+    payoutAccountHolder: text("payout_account_holder").notNull(),
+    adminNote: text("admin_note"),
+    processedByUserId: text("processed_by_user_id").references(
+      () => userProfilesTable.userId,
+      { onDelete: "set null" },
+    ),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("sharewa_withdrawals_owner_created_idx").on(table.ownerUserId, table.createdAt),
+    index("sharewa_withdrawals_status_created_idx").on(table.status, table.createdAt),
+  ],
 );
 
 export const insertContactSchema = createInsertSchema(contactsTable).omit({

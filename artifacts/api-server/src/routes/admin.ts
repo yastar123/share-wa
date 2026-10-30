@@ -5,6 +5,7 @@ import {
   DeleteAdminUserResponse,
   GetAdminMeResponse,
   GetAdminOverviewResponse,
+  GetAdminSystemSettingsResponse,
   ListAdminUsersQueryParams,
   ListAdminUsersResponse,
   UpdateAdminUserStatusBody,
@@ -13,6 +14,8 @@ import {
   UpdateAdminUserRoleBody,
   UpdateAdminUserRoleParams,
   UpdateAdminUserRoleResponse,
+  UpdateAdminSystemSettingsBody,
+  UpdateAdminSystemSettingsResponse,
 } from "@workspace/api-zod";
 import {
   activityTable,
@@ -20,12 +23,14 @@ import {
   contactsTable,
   db,
   messagesTable,
+  systemSettingsTable,
   userProfilesTable,
   whatsappSessionsTable,
 } from "@workspace/db";
 import { requireAdmin, ensureAdminAccess } from "../middlewares/requireAdmin";
 import { requireAuth } from "../middlewares/requireAuth";
 import { disconnectWhatsApp } from "../lib/whatsapp";
+import { getCurrencySettings } from "../lib/wallet";
 
 const router: IRouter = Router();
 
@@ -36,7 +41,96 @@ router.get("/admin/me", requireAuth, async (_req, res): Promise<void> => {
 });
 
 const adminRouter: IRouter = Router();
-adminRouter.use(requireAuth, requireAdmin);
+adminRouter.use("/admin", requireAuth, requireAdmin);
+
+adminRouter.get("/admin/system", async (_req, res): Promise<void> => {
+  const [settings] = await db
+    .select({
+      outboundMessagingEnabled: systemSettingsTable.outboundMessagingEnabled,
+      currencySettings: systemSettingsTable.currencySettings,
+      updatedAt: systemSettingsTable.updatedAt,
+    })
+    .from(systemSettingsTable)
+    .where(eq(systemSettingsTable.id, 1))
+    .limit(1);
+
+  const currencySettings = await getCurrencySettings();
+  res.json(
+    GetAdminSystemSettingsResponse.parse({
+      outboundMessagingEnabled: settings?.outboundMessagingEnabled ?? true,
+      currencySettings,
+      updatedAt: settings?.updatedAt ?? null,
+    }),
+  );
+});
+
+adminRouter.patch("/admin/system", async (req, res): Promise<void> => {
+  const body = UpdateAdminSystemSettingsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const currencySettings = body.data.currencySettings ?? await getCurrencySettings();
+  for (const currency of ["IDR", "USD", "CNY"] as const) {
+    const setting = currencySettings[currency];
+    if (
+      !setting ||
+      typeof setting.enabled !== "boolean" ||
+      !Number.isSafeInteger(setting.minimumWithdrawal) ||
+      setting.minimumWithdrawal < 1 ||
+      !Number.isSafeInteger(setting.earningPerMessage) ||
+      setting.earningPerMessage < 0 ||
+      !Number.isSafeInteger(setting.commissionPerMessage) ||
+      setting.commissionPerMessage < 0
+    ) {
+      res.status(400).json({ error: `Pengaturan ${currency} tidak valid.` });
+      return;
+    }
+  }
+
+  const updatedAt = new Date();
+  const [existing] = await db
+    .select({ id: systemSettingsTable.id })
+    .from(systemSettingsTable)
+    .where(eq(systemSettingsTable.id, 1))
+    .limit(1);
+  if (existing) {
+    await db
+      .update(systemSettingsTable)
+      .set({
+        outboundMessagingEnabled: body.data.outboundMessagingEnabled,
+        currencySettings,
+        updatedByUserId: res.locals.userId as string,
+        updatedAt,
+      })
+      .where(eq(systemSettingsTable.id, 1));
+  } else {
+    await db.insert(systemSettingsTable).values({
+      id: 1,
+      outboundMessagingEnabled: body.data.outboundMessagingEnabled,
+      currencySettings,
+      updatedByUserId: res.locals.userId as string,
+      updatedAt,
+    });
+  }
+
+  await db.insert(activityTable).values({
+    ownerUserId: res.locals.userId as string,
+    kind: "admin_system_setting_updated",
+    summary: body.data.outboundMessagingEnabled
+      ? "Pengiriman pesan keluar dilanjutkan oleh admin."
+      : "Pengiriman pesan keluar dijeda oleh admin.",
+  });
+
+  res.json(
+    UpdateAdminSystemSettingsResponse.parse({
+      outboundMessagingEnabled: body.data.outboundMessagingEnabled,
+      currencySettings,
+      updatedAt,
+    }),
+  );
+});
 
 adminRouter.get("/admin/overview", async (_req, res): Promise<void> => {
   const [

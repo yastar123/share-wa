@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { UserProfileLanguage } from './userProfileLanguage';
+import type { UserProfilePreferredCurrency } from './userProfilePreferredCurrency';
 
 export interface UserProfile {
   fullName: string;
@@ -13,4 +14,6 @@ export interface UserProfile {
   /** @nullable */
   telegramUsername?: string | null;
   language: UserProfileLanguage;
+  preferredCurrency: UserProfilePreferredCurrency;
+  referralCode: string;
 }

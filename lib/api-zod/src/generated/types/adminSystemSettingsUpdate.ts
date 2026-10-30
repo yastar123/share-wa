@@ -5,7 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminSystemSettingsUpdateCurrencySettings } from './adminSystemSettingsUpdateCurrencySettings';
 
 export interface AdminSystemSettingsUpdate {
   outboundMessagingEnabled: boolean;
+  currencySettings?: AdminSystemSettingsUpdateCurrencySettings;
 }

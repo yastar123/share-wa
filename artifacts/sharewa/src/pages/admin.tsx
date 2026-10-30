@@ -1,10 +1,10 @@
 import './admin.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity, AlertTriangle, Check, ChevronLeft, ChevronRight, CircleHelp,
   ContactRound, LoaderCircle, LockKeyhole, MessageSquareText, Pause, Play,
-  RefreshCw, Search, Send, Shield, ShieldCheck, Smartphone, Trash2, Users,
+  RefreshCw, Search, Send, Shield, ShieldCheck, Smartphone, Trash2, Users, WalletCards,
 } from 'lucide-react';
 import {
   getGetAdminOverviewQueryKey, getGetAdminSystemSettingsQueryKey,
@@ -14,6 +14,9 @@ import {
   useGetAdminSystemSettings, useListAdminContacts, useListAdminMessages,
   useListAdminUsers, useSendAdminMessage, useUpdateAdminContact,
   useUpdateAdminSystemSettings, useUpdateAdminUserRole, useUpdateAdminUserStatus,
+  getListAdminWithdrawalsQueryKey, useListAdminWithdrawals,
+  useUpdateAdminWithdrawal,
+  type AdminSystemSettingsUpdateCurrencySettings,
 } from '@workspace/api-client-react';
 import { useAppLanguage } from '@/lib/i18n';
 
@@ -21,7 +24,8 @@ const PAGE_SIZE = 12;
 const locales = { id: 'id-ID', en: 'en-US', zh: 'zh-CN' } as const;
 const connectionKeys = ['connected', 'disconnected', 'awaitingLink', 'reconnecting', 'error'] as const;
 
-type Tab = 'overview' | 'accounts' | 'contacts' | 'messages' | 'system';
+type Tab = 'overview' | 'accounts' | 'contacts' | 'messages' | 'withdrawals' | 'system';
+const currencyScale = { IDR: 1, USD: 100, CNY: 100 } as const;
 
 function dateLabel(value: string | null | undefined, language: keyof typeof locales) {
   if (!value) return '—';
@@ -62,6 +66,7 @@ export function AdminPage() {
   const [sendContact, setSendContact] = useState('');
   const [sendText, setSendText] = useState('');
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [currencySettings, setCurrencySettings] = useState<AdminSystemSettingsUpdateCurrencySettings | null>(null);
 
   const adminCheck = useGetAdminMe();
   const isAdmin = adminCheck.data?.isAdmin === true;
@@ -74,6 +79,7 @@ export function AdminPage() {
   const messagesParams = { limit: PAGE_SIZE, offset, search: messageSearch || undefined, ownerUserId: messageOwner || undefined, status: messageStatus as 'all' | 'queued' | 'sent' | 'delivered' | 'failed' };
   const messages = useListAdminMessages(messagesParams, { query: { enabled: isAdmin, queryKey: getListAdminMessagesQueryKey(messagesParams) } });
   const settings = useGetAdminSystemSettings({ query: { enabled: isAdmin, queryKey: getGetAdminSystemSettingsQueryKey() } });
+  const withdrawals = useListAdminWithdrawals({ status: 'pending' }, { query: { enabled: isAdmin, queryKey: getListAdminWithdrawalsQueryKey({ status: 'pending' }) } });
 
   const updateRole = useUpdateAdminUserRole();
   const updateStatus = useUpdateAdminUserStatus();
@@ -84,10 +90,15 @@ export function AdminPage() {
   const deleteMessage = useDeleteAdminMessage();
   const updateSettings = useUpdateAdminSystemSettings();
   const disconnect = useDisconnectAdminUserWhatsApp();
+  const updateWithdrawal = useUpdateAdminWithdrawal();
+  useEffect(() => {
+    if (settings.data?.currencySettings) setCurrencySettings(settings.data.currencySettings);
+  }, [settings.data?.currencySettings]);
 
   const refreshEverything = () => {
     void adminCheck.refetch(); void overview.refetch(); void users.refetch();
     void contacts.refetch(); void messages.refetch(); void settings.refetch();
+    void withdrawals.refetch();
   };
   const invalidateOverviewUsers = async () => Promise.all([
     cache.invalidateQueries({ queryKey: getGetAdminOverviewQueryKey() }),
@@ -226,6 +237,51 @@ export function AdminPage() {
       onError: () => setFeedback({ tone: 'error', message: t('System setting update failed.') }),
     });
   };
+  const saveCurrencySettings = () => {
+    if (!currencySettings) return;
+    updateSettings.mutate({ data: {
+      outboundMessagingEnabled: settingsOn,
+      currencySettings,
+    } }, {
+      onSuccess: async () => {
+        await cache.invalidateQueries({ queryKey: getGetAdminSystemSettingsQueryKey() });
+        setFeedback({ tone: 'success', message: t('Currency and wallet settings saved.') });
+      },
+      onError: () => setFeedback({ tone: 'error', message: t('System setting update failed.') }),
+    });
+  };
+  const processWithdrawal = (withdrawalId: string, status: 'paid' | 'rejected') => {
+    const enteredNote = status === 'rejected'
+      ? window.prompt(t('Enter a reason for rejecting this withdrawal.'))
+      : undefined;
+    const adminNote = enteredNote?.trim() || undefined;
+    if (status === 'rejected' && !adminNote) return;
+    if (!window.confirm(t(status === 'paid' ? 'Confirm that this payout has been paid?' : 'Reject this payout request?'))) return;
+    updateWithdrawal.mutate({ data: { withdrawalId, status, adminNote } }, {
+      onSuccess: async () => {
+        await Promise.all([
+          cache.invalidateQueries({ queryKey: getListAdminWithdrawalsQueryKey() }),
+          cache.invalidateQueries({ queryKey: getGetAdminOverviewQueryKey() }),
+        ]);
+        setFeedback({ tone: 'success', message: t(status === 'paid' ? 'Withdrawal marked as paid.' : 'Withdrawal rejected.') });
+      },
+      onError: () => setFeedback({ tone: 'error', message: t('Withdrawal could not be updated.') }),
+    });
+  };
+  const updateCurrencySetting = (
+    currency: keyof AdminSystemSettingsUpdateCurrencySettings,
+    field: 'minimumWithdrawal' | 'earningPerMessage' | 'commissionPerMessage',
+    majorValue: string,
+  ) => {
+    if (!currencySettings) return;
+    const value = Number(majorValue);
+    if (!Number.isFinite(value) || value < 0) return;
+    const amount = Math.round(value * currencyScale[currency]);
+    setCurrencySettings({
+      ...currencySettings,
+      [currency]: { ...currencySettings[currency], [field]: amount },
+    });
+  };
 
   return <div className="admin-page" data-testid="admin-control-center">
     <section className="admin-intro" data-testid="admin-intro">
@@ -245,7 +301,7 @@ export function AdminPage() {
     <nav className="admin-tabs" aria-label={t('Admin sections')} data-testid="admin-tabs">
       {([
         ['overview', Activity, 'Overview'], ['accounts', Users, 'Accounts'], ['contacts', ContactRound, 'Contacts'],
-        ['messages', MessageSquareText, 'Messages'], ['system', Shield, 'System'],
+        ['messages', MessageSquareText, 'Messages'], ['withdrawals', WalletCards, 'Withdrawals'], ['system', Shield, 'System'],
       ] as const).map(([key, Icon, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)} data-testid={`tab-admin-${key}`}><Icon size={15} />{t(label)}</button>)}
     </nav>
 
@@ -356,6 +412,27 @@ export function AdminPage() {
       <p className="admin-risk-note"><AlertTriangle size={14} />{t('Deleting a message removes only its stored record. It cannot recall a message already delivered on WhatsApp.')}</p>
     </section>}
 
+    {tab === 'withdrawals' && <section className="admin-section" data-testid="admin-withdrawals-section">
+      <div className="admin-section-heading"><div><span className="admin-overline">{t('Manual payout review')}</span><h3>{t('Withdrawal requests')}</h3><p>{t('ShareWa does not transfer funds. The administrator must send the payout manually through the bank or e-wallet, then mark it paid here.')}</p></div></div>
+      {withdrawals.isLoading ? <div className="admin-inline-loading">{t('Loading withdrawal requests')}</div> :
+        withdrawals.isError || !withdrawals.data ? <div className="admin-inline-error" role="alert">{t('Withdrawal requests could not be loaded.')} <button type="button" className="text-link" onClick={() => void withdrawals.refetch()}>{t('Try again')}</button></div> :
+          withdrawals.data.length === 0 ? <div className="panel admin-empty"><div className="admin-state-symbol"><WalletCards size={18} /></div><h4>{t('No pending withdrawals')}</h4><p>{t('New requests will appear here for review.')}</p></div> :
+            <div className="admin-user-table-wrap"><table className="data-table"><thead><tr><th>{t('Account')}</th><th>{t('Amount')}</th><th>{t('Destination')}</th><th>{t('Account holder')}</th><th>{t('Requested')}</th><th>{t('Actions')}</th></tr></thead><tbody>
+              {withdrawals.data.map((request) => <tr key={request.id}>
+                <td>@{request.ownerUsername}</td>
+                <td>{new Intl.NumberFormat(locales[language], { style: 'currency', currency: request.currency, maximumFractionDigits: request.currency === 'IDR' ? 0 : 2 }).format(request.amount / currencyScale[request.currency])}</td>
+                <td>{request.payoutInstitution} · {request.payoutAccountNumber}</td>
+                <td>{request.payoutAccountHolder}</td>
+                <td>{dateLabel(request.createdAt, language)}</td>
+                <td><div className="admin-actions">
+                  <button type="button" className="btn btn-primary btn-sm" disabled={updateWithdrawal.isPending} onClick={() => processWithdrawal(request.id, 'paid')}>{t('Mark paid')}</button>
+                  <button type="button" className="btn btn-danger btn-sm" disabled={updateWithdrawal.isPending} onClick={() => processWithdrawal(request.id, 'rejected')}>{t('Reject')}</button>
+                </div></td>
+              </tr>)}
+            </tbody></table></div>}
+      <p className="admin-risk-note"><AlertTriangle size={14} />{t('Do not mark a withdrawal paid until the transfer has been verified outside the application.')}</p>
+    </section>}
+
     {tab === 'system' && <section className="admin-section" data-testid="admin-system-section">
       <div className="admin-section-heading"><div><span className="admin-overline">{t('Service safeguards')}</span><h3>{t('System controls')}</h3><p>{t('Global outbound controls affect every account.')}</p></div></div>
       {settings.isLoading ? <div className="panel admin-setting-skeleton" data-testid="admin-settings-loading"><i /><i /></div> :
@@ -364,6 +441,17 @@ export function AdminPage() {
             <div className="admin-global-icon">{settingsOn ? <Play size={18} /> : <Pause size={18} />}</div><div className="admin-global-copy"><span className="admin-overline">{t('Outbound WhatsApp messaging')}</span><h4>{t(settingsOn ? 'Messaging is enabled' : 'Messaging is paused')}</h4><p>{t('Updated {{time}}', { time: dateLabel(settings.data.updatedAt, language) })}</p><small>{t('A global pause blocks new outbound sends. Existing WhatsApp sessions remain connected.')}</small></div>
             <button type="button" className={`btn ${settingsOn ? 'btn-danger' : 'btn-primary'}`} disabled={updateSettings.isPending} onClick={onGlobalSetting} data-testid="button-toggle-outbound">{updateSettings.isPending ? <LoaderCircle className="admin-spin" size={14} /> : settingsOn ? <Pause size={14} /> : <Play size={14} />}{t(settingsOn ? 'Pause all messaging' : 'Resume all messaging')}</button>
           </div>}
+      {currencySettings && <div className="panel settings-panel" style={{ marginTop: 16 }}>
+        <div className="admin-section-heading"><div><span className="admin-overline">{t('Wallet policy')}</span><h3>{t('Currencies, minimums, and earnings')}</h3><p>{t('Values in USD and CNY use cents/fen internally; IDR uses whole rupiah.')}</p></div></div>
+        <div className="admin-user-table-wrap"><table className="data-table"><thead><tr><th>{t('Currency')}</th><th>{t('Enabled')}</th><th>{t('Minimum withdrawal')}</th><th>{t('Earning per sent message')}</th><th>{t('Referral commission per sent message')}</th></tr></thead><tbody>
+          {(['IDR', 'USD', 'CNY'] as const).map((currency) => <tr key={currency}>
+            <td><strong>{currency}</strong></td>
+            <td><input type="checkbox" checked={currencySettings[currency].enabled} onChange={(event) => setCurrencySettings({ ...currencySettings, [currency]: { ...currencySettings[currency], enabled: event.target.checked } })} aria-label={`${currency} ${t('Enabled')}`} /></td>
+            {(['minimumWithdrawal', 'earningPerMessage', 'commissionPerMessage'] as const).map((field) => <td key={field}><input className="field" type="number" min={field === 'minimumWithdrawal' ? 0.01 : 0} step={currency === 'IDR' ? 1 : 0.01} value={currencySettings[currency][field] / currencyScale[currency]} onChange={(event) => updateCurrencySetting(currency, field, event.target.value)} aria-label={`${currency} ${t(field)}`} /></td>)}
+          </tr>)}
+        </tbody></table></div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}><button type="button" className="btn btn-primary" disabled={updateSettings.isPending} onClick={saveCurrencySettings}>{updateSettings.isPending ? t('Saving…') : t('Save currency settings')}</button></div>
+      </div>}
       <div className="admin-system-note panel"><LockKeyhole size={16} /><p>{t('Session disconnect does not expose credentials or pairing codes. Reconnection and pairing remain the account owner’s responsibility.')}</p></div>
     </section>}
 

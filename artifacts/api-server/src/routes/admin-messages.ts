@@ -21,6 +21,11 @@ import {
   WhatsAppConnectionError,
 } from "../lib/whatsapp";
 import { isOutboundMessagingEnabled } from "../lib/system-settings";
+import {
+  outboundMessagePolicy,
+  reserveOutboundMessage,
+} from "../lib/outbound-rate-limit";
+import { awardMessageEarnings, awardReferralCommission } from "../lib/wallet";
 
 const router: IRouter = Router();
 router.use("/admin", requireAuth, requireAdmin);
@@ -171,19 +176,17 @@ router.post("/admin/messages", async (req, res): Promise<void> => {
     return;
   }
 
-  const [message] = await db
-    .insert(messagesTable)
-    .values({
-      ownerUserId: parsed.data.ownerUserId,
-      contactId: contact.id,
-      contactName: contact.displayName,
-      phone: contact.phone,
-      text,
-      status: "queued",
-    })
-    .returning();
+  const message = await reserveOutboundMessage({
+    ownerUserId: parsed.data.ownerUserId,
+    contactId: contact.id,
+    contactName: contact.displayName,
+    phone: contact.phone,
+    text,
+  });
   if (!message) {
-    res.status(500).json({ error: "Pesan tidak dapat disimpan." });
+    res.status(429).json({
+      error: `Batas ${outboundMessagePolicy.maxMessagesPerHour} pesan per jam telah tercapai untuk akun ini.`,
+    });
     return;
   }
 
@@ -234,6 +237,8 @@ router.post("/admin/messages", async (req, res): Promise<void> => {
       summary: `Admin mengirim satu pesan atas nama akun ${owner.username}.`,
     },
   ]);
+  await awardMessageEarnings(parsed.data.ownerUserId, sent.id);
+  await awardReferralCommission(parsed.data.ownerUserId, sent.id);
 
   res.status(201).json(
     SendAdminMessageResponse.parse({

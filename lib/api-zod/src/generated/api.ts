@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Sign in with an email and password
  */
-export const signInBodyEmailMax = 254;
+export const signInBodyIdentifierMax = 254;
 
 export const signInBodyPasswordMin = 12;
 export const signInBodyPasswordMax = 128;
@@ -28,7 +28,7 @@ export const signInBodyPasswordMax = 128;
 
 
 export const SignInBody = zod.object({
-  "email": zod.string().email().max(signInBodyEmailMax),
+  "identifier": zod.string().min(1).max(signInBodyIdentifierMax),
   "password": zod.string().min(signInBodyPasswordMin).max(signInBodyPasswordMax)
 })
 
@@ -45,17 +45,30 @@ export const SignInResponse = zod.object({
  */
 export const registerUserBodyFullNameMax = 120;
 
+export const registerUserBodyUsernameMin = 3;
+export const registerUserBodyUsernameMax = 28;
+
+
+export const registerUserBodyUsernameRegExp = new RegExp('^[a-z0-9_]+$');
 export const registerUserBodyEmailMax = 254;
 
 export const registerUserBodyPasswordMin = 12;
 export const registerUserBodyPasswordMax = 128;
 
+export const registerUserBodyReferralCodeMax = 16;
+
+export const registerUserBodyCaptchaTokenMax = 4096;
+
 
 
 export const RegisterUserBody = zod.object({
   "fullName": zod.string().min(1).max(registerUserBodyFullNameMax),
+  "username": zod.string().min(registerUserBodyUsernameMin).max(registerUserBodyUsernameMax).regex(registerUserBodyUsernameRegExp),
   "email": zod.string().email().max(registerUserBodyEmailMax),
-  "password": zod.string().min(registerUserBodyPasswordMin).max(registerUserBodyPasswordMax)
+  "password": zod.string().min(registerUserBodyPasswordMin).max(registerUserBodyPasswordMax),
+  "referralCode": zod.string().max(registerUserBodyReferralCodeMax).optional(),
+  "termsAccepted": zod.boolean(),
+  "captchaToken": zod.string().max(registerUserBodyCaptchaTokenMax).optional()
 })
 
 export const RegisterUserResponse = zod.object({
@@ -63,6 +76,43 @@ export const RegisterUserResponse = zod.object({
   "email": zod.string().email().nullable(),
   "fullName": zod.string(),
   "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary Send a one-time password reset link when the email belongs to an account
+ */
+export const requestPasswordResetBodyEmailMax = 254;
+
+
+
+export const RequestPasswordResetBody = zod.object({
+  "email": zod.string().email().max(requestPasswordResetBodyEmailMax)
+})
+
+export const RequestPasswordResetResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Change a password using a valid one-time reset token
+ */
+export const confirmPasswordResetBodyTokenMin = 32;
+export const confirmPasswordResetBodyTokenMax = 128;
+
+export const confirmPasswordResetBodyPasswordMin = 12;
+export const confirmPasswordResetBodyPasswordMax = 128;
+
+
+
+export const ConfirmPasswordResetBody = zod.object({
+  "token": zod.string().min(confirmPasswordResetBodyTokenMin).max(confirmPasswordResetBodyTokenMax),
+  "password": zod.string().min(confirmPasswordResetBodyPasswordMin).max(confirmPasswordResetBodyPasswordMax)
+})
+
+export const ConfirmPasswordResetResponse = zod.object({
+  "message": zod.string()
 })
 
 
@@ -92,7 +142,9 @@ export const GetProfileResponse = zod.object({
   "fullName": zod.string(),
   "username": zod.string(),
   "telegramUsername": zod.string().nullish(),
-  "language": zod.enum(['id', 'en', 'zh'])
+  "language": zod.enum(['id', 'en', 'zh']),
+  "preferredCurrency": zod.enum(['IDR', 'USD', 'CNY']),
+  "referralCode": zod.string()
 })
 
 
@@ -108,14 +160,166 @@ export const updateProfileBodyTelegramUsernameMax = 64;
 export const UpdateProfileBody = zod.object({
   "fullName": zod.string().min(1).max(updateProfileBodyFullNameMax).optional(),
   "telegramUsername": zod.string().max(updateProfileBodyTelegramUsernameMax).nullish(),
-  "language": zod.enum(['id', 'en', 'zh']).optional()
+  "language": zod.enum(['id', 'en', 'zh']).optional(),
+  "preferredCurrency": zod.enum(['IDR', 'USD', 'CNY']).optional()
 })
 
 export const UpdateProfileResponse = zod.object({
   "fullName": zod.string(),
   "username": zod.string(),
   "telegramUsername": zod.string().nullish(),
-  "language": zod.enum(['id', 'en', 'zh'])
+  "language": zod.enum(['id', 'en', 'zh']),
+  "preferredCurrency": zod.enum(['IDR', 'USD', 'CNY']),
+  "referralCode": zod.string()
+})
+
+
+/**
+ * @summary Change the current user's password
+ */
+export const changePasswordBodyCurrentPasswordMax = 128;
+
+export const changePasswordBodyNewPasswordMin = 12;
+export const changePasswordBodyNewPasswordMax = 128;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string().min(1).max(changePasswordBodyCurrentPasswordMax),
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin).max(changePasswordBodyNewPasswordMax)
+})
+
+export const ChangePasswordResponse = zod.void()
+
+
+/**
+ * @summary Get the current user's payout destination
+ */
+export const GetPayoutPreferencesResponse = zod.object({
+  "method": zod.union([zod.literal('bank'),zod.literal('e_wallet'),zod.literal(null)]).nullable(),
+  "institution": zod.string().nullable(),
+  "accountNumber": zod.string().nullable(),
+  "accountHolder": zod.string().nullable()
+})
+
+
+/**
+ * @summary Save a bank or e-wallet payout destination
+ */
+export const savePayoutPreferencesBodyInstitutionMin = 2;
+export const savePayoutPreferencesBodyInstitutionMax = 80;
+
+export const savePayoutPreferencesBodyAccountNumberMin = 4;
+export const savePayoutPreferencesBodyAccountNumberMax = 40;
+
+export const savePayoutPreferencesBodyAccountHolderMin = 2;
+export const savePayoutPreferencesBodyAccountHolderMax = 120;
+
+
+
+export const SavePayoutPreferencesBody = zod.object({
+  "method": zod.enum(['bank', 'e_wallet']),
+  "institution": zod.string().min(savePayoutPreferencesBodyInstitutionMin).max(savePayoutPreferencesBodyInstitutionMax),
+  "accountNumber": zod.string().min(savePayoutPreferencesBodyAccountNumberMin).max(savePayoutPreferencesBodyAccountNumberMax),
+  "accountHolder": zod.string().min(savePayoutPreferencesBodyAccountHolderMin).max(savePayoutPreferencesBodyAccountHolderMax)
+})
+
+export const SavePayoutPreferencesResponse = zod.object({
+  "method": zod.union([zod.literal('bank'),zod.literal('e_wallet'),zod.literal(null)]).nullable(),
+  "institution": zod.string().nullable(),
+  "accountNumber": zod.string().nullable(),
+  "accountHolder": zod.string().nullable()
+})
+
+
+/**
+ * @summary Get wallet balances, withdrawal history, and referral summary
+ */
+export const GetWalletResponse = zod.object({
+  "currency": zod.enum(['IDR', 'USD', 'CNY']),
+  "availableBalance": zod.number().int(),
+  "totalEarned": zod.number().int(),
+  "totalWithdrawn": zod.number().int(),
+  "minimumWithdrawal": zod.number().int(),
+  "earningPerMessage": zod.number().int(),
+  "commissionPerMessage": zod.number().int(),
+  "withdrawals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "amount": zod.number().int(),
+  "currency": zod.enum(['IDR', 'USD', 'CNY']),
+  "status": zod.enum(['pending', 'paid', 'rejected', 'cancelled']),
+  "payoutMethod": zod.string(),
+  "payoutInstitution": zod.string(),
+  "payoutAccountNumber": zod.string(),
+  "payoutAccountHolder": zod.string(),
+  "adminNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "referralCode": zod.string(),
+  "referralCount": zod.number().int(),
+  "referralMessages": zod.number().int(),
+  "referralEarnings": zod.number().int(),
+  "payoutConfigured": zod.boolean()
+})
+
+
+/**
+ * @summary Request a withdrawal from available wallet balance
+ */
+
+
+
+export const CreateWithdrawalBody = zod.object({
+  "amount": zod.number().int().min(1),
+  "currency": zod.enum(['IDR', 'USD', 'CNY'])
+})
+
+export const CreateWithdrawalResponse = zod.object({
+  "id": zod.string().uuid(),
+  "amount": zod.number().int(),
+  "currency": zod.enum(['IDR', 'USD', 'CNY']),
+  "status": zod.enum(['pending', 'paid', 'rejected', 'cancelled']),
+  "payoutMethod": zod.string(),
+  "payoutInstitution": zod.string(),
+  "payoutAccountNumber": zod.string(),
+  "payoutAccountHolder": zod.string(),
+  "adminNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Cancel a pending withdrawal request
+ */
+export const CancelWithdrawalParams = zod.object({
+  "withdrawalId": zod.coerce.string().uuid()
+})
+
+export const CancelWithdrawalResponse = zod.object({
+  "id": zod.string().uuid(),
+  "amount": zod.number().int(),
+  "currency": zod.enum(['IDR', 'USD', 'CNY']),
+  "status": zod.enum(['pending', 'paid', 'rejected', 'cancelled']),
+  "payoutMethod": zod.string(),
+  "payoutInstitution": zod.string(),
+  "payoutAccountNumber": zod.string(),
+  "payoutAccountHolder": zod.string(),
+  "adminNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get referral link and referred members
+ */
+export const GetReferralsResponse = zod.object({
+  "referralCode": zod.string(),
+  "referralLink": zod.string(),
+  "members": zod.array(zod.object({
+  "username": zod.string(),
+  "joinedAt": zod.coerce.date(),
+  "sentMessages": zod.number().int()
+}))
 })
 
 
@@ -128,9 +332,12 @@ export const GetDashboardSummaryResponse = zod.object({
   "totalContacts": zod.number().int(),
   "optedInContacts": zod.number().int(),
   "optedOutContacts": zod.number().int(),
+  "messagesQueued": zod.number().int(),
   "messagesSent": zod.number().int(),
   "messagesDelivered": zod.number().int(),
-  "messagesFailed": zod.number().int()
+  "messagesFailed": zod.number().int(),
+  "messagesDeliveredLast7Days": zod.number().int(),
+  "messagesFailedLast7Days": zod.number().int()
 })
 
 
@@ -148,11 +355,59 @@ export const GetDashboardActivityQueryParams = zod.object({
 
 export const GetDashboardActivityResponseItem = zod.object({
   "id": zod.string().uuid(),
-  "kind": zod.enum(['contact_added', 'consent_updated', 'message_sent', 'device_connected', 'device_disconnected']),
+  "kind": zod.string().describe('Activity event identifier stored by the workspace.'),
   "summary": zod.string(),
   "createdAt": zod.coerce.date()
 })
 export const GetDashboardActivityResponse = zod.array(GetDashboardActivityResponseItem)
+
+
+/**
+ * @summary List the current user's notifications
+ */
+export const listNotificationsQueryLimitDefault = 20;
+export const listNotificationsQueryLimitMax = 50;
+
+
+
+export const ListNotificationsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listNotificationsQueryLimitMax).default(listNotificationsQueryLimitDefault)
+})
+
+export const ListNotificationsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "readAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.string().uuid()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "readAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Mark all current user's notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  "updated": zod.boolean()
+})
 
 
 /**
@@ -308,6 +563,15 @@ export const RequestPairingCodeResponse = zod.object({
 
 
 /**
+ * @summary Request a temporary QR code to link a WhatsApp account
+ */
+export const RequestWhatsAppQrCodeResponse = zod.object({
+  "qrCode": zod.string(),
+  "expiresInSeconds": zod.number().int()
+})
+
+
+/**
  * @summary Disconnect the current user's linked device
  */
 export const DisconnectWhatsAppResponse = zod.object({
@@ -363,6 +627,31 @@ export const SendManualMessageResponse = zod.object({
   "text": zod.string(),
   "status": zod.enum(['queued', 'sent', 'delivered', 'failed']),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Sends sequentially with a delay, with a maximum of five recipients per batch and twenty attempted messages per account per hour.
+ * @summary Send one message to a small group of opted-in contacts
+ */
+export const sendMessageBatchBodyContactIdsMax = 5;
+
+export const sendMessageBatchBodyTextMax = 4000;
+
+
+
+export const SendMessageBatchBody = zod.object({
+  "contactIds": zod.array(zod.string().uuid()).min(1).max(sendMessageBatchBodyContactIdsMax),
+  "text": zod.string().min(1).max(sendMessageBatchBodyTextMax)
+})
+
+export const SendMessageBatchResponse = zod.object({
+  "results": zod.array(zod.object({
+  "contactId": zod.string().uuid(),
+  "contactName": zod.string(),
+  "status": zod.enum(['sent', 'failed', 'skipped']),
+  "error": zod.string().optional()
+}))
 })
 
 
@@ -645,8 +934,45 @@ export const DeleteAdminMessageResponse = zod.void()
 /**
  * @summary Get global outbound messaging settings
  */
+
+export const getAdminSystemSettingsResponseCurrencySettingsIDREarningPerMessageMin = 0;
+
+export const getAdminSystemSettingsResponseCurrencySettingsIDRCommissionPerMessageMin = 0;
+
+
+export const getAdminSystemSettingsResponseCurrencySettingsUSDEarningPerMessageMin = 0;
+
+export const getAdminSystemSettingsResponseCurrencySettingsUSDCommissionPerMessageMin = 0;
+
+
+export const getAdminSystemSettingsResponseCurrencySettingsCNYEarningPerMessageMin = 0;
+
+export const getAdminSystemSettingsResponseCurrencySettingsCNYCommissionPerMessageMin = 0;
+
+
+
 export const GetAdminSystemSettingsResponse = zod.object({
   "outboundMessagingEnabled": zod.boolean(),
+  "currencySettings": zod.object({
+  "IDR": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(getAdminSystemSettingsResponseCurrencySettingsIDREarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(getAdminSystemSettingsResponseCurrencySettingsIDRCommissionPerMessageMin)
+}),
+  "USD": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(getAdminSystemSettingsResponseCurrencySettingsUSDEarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(getAdminSystemSettingsResponseCurrencySettingsUSDCommissionPerMessageMin)
+}),
+  "CNY": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(getAdminSystemSettingsResponseCurrencySettingsCNYEarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(getAdminSystemSettingsResponseCurrencySettingsCNYCommissionPerMessageMin)
+})
+}),
   "updatedAt": zod.coerce.date().nullable()
 })
 
@@ -654,14 +980,143 @@ export const GetAdminSystemSettingsResponse = zod.object({
 /**
  * @summary Pause or resume all outbound WhatsApp messaging
  */
+
+export const updateAdminSystemSettingsBodyCurrencySettingsIDREarningPerMessageMin = 0;
+
+export const updateAdminSystemSettingsBodyCurrencySettingsIDRCommissionPerMessageMin = 0;
+
+
+export const updateAdminSystemSettingsBodyCurrencySettingsUSDEarningPerMessageMin = 0;
+
+export const updateAdminSystemSettingsBodyCurrencySettingsUSDCommissionPerMessageMin = 0;
+
+
+export const updateAdminSystemSettingsBodyCurrencySettingsCNYEarningPerMessageMin = 0;
+
+export const updateAdminSystemSettingsBodyCurrencySettingsCNYCommissionPerMessageMin = 0;
+
+
+
 export const UpdateAdminSystemSettingsBody = zod.object({
-  "outboundMessagingEnabled": zod.boolean()
+  "outboundMessagingEnabled": zod.boolean(),
+  "currencySettings": zod.object({
+  "IDR": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(updateAdminSystemSettingsBodyCurrencySettingsIDREarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(updateAdminSystemSettingsBodyCurrencySettingsIDRCommissionPerMessageMin)
+}),
+  "USD": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(updateAdminSystemSettingsBodyCurrencySettingsUSDEarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(updateAdminSystemSettingsBodyCurrencySettingsUSDCommissionPerMessageMin)
+}),
+  "CNY": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(updateAdminSystemSettingsBodyCurrencySettingsCNYEarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(updateAdminSystemSettingsBodyCurrencySettingsCNYCommissionPerMessageMin)
 })
+}).optional()
+})
+
+
+export const updateAdminSystemSettingsResponseCurrencySettingsIDREarningPerMessageMin = 0;
+
+export const updateAdminSystemSettingsResponseCurrencySettingsIDRCommissionPerMessageMin = 0;
+
+
+export const updateAdminSystemSettingsResponseCurrencySettingsUSDEarningPerMessageMin = 0;
+
+export const updateAdminSystemSettingsResponseCurrencySettingsUSDCommissionPerMessageMin = 0;
+
+
+export const updateAdminSystemSettingsResponseCurrencySettingsCNYEarningPerMessageMin = 0;
+
+export const updateAdminSystemSettingsResponseCurrencySettingsCNYCommissionPerMessageMin = 0;
+
+
 
 export const UpdateAdminSystemSettingsResponse = zod.object({
   "outboundMessagingEnabled": zod.boolean(),
+  "currencySettings": zod.object({
+  "IDR": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(updateAdminSystemSettingsResponseCurrencySettingsIDREarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(updateAdminSystemSettingsResponseCurrencySettingsIDRCommissionPerMessageMin)
+}),
+  "USD": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(updateAdminSystemSettingsResponseCurrencySettingsUSDEarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(updateAdminSystemSettingsResponseCurrencySettingsUSDCommissionPerMessageMin)
+}),
+  "CNY": zod.object({
+  "enabled": zod.boolean(),
+  "minimumWithdrawal": zod.number().int().min(1),
+  "earningPerMessage": zod.number().int().min(updateAdminSystemSettingsResponseCurrencySettingsCNYEarningPerMessageMin),
+  "commissionPerMessage": zod.number().int().min(updateAdminSystemSettingsResponseCurrencySettingsCNYCommissionPerMessageMin)
+})
+}),
   "updatedAt": zod.coerce.date().nullable()
 })
+
+
+/**
+ * @summary Review withdrawal requests
+ */
+export const listAdminWithdrawalsQueryStatusDefault = `pending`;
+
+export const ListAdminWithdrawalsQueryParams = zod.object({
+  "status": zod.enum(['all', 'pending', 'paid', 'rejected', 'cancelled']).default(listAdminWithdrawalsQueryStatusDefault)
+})
+
+export const ListAdminWithdrawalsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "amount": zod.number().int(),
+  "currency": zod.enum(['IDR', 'USD', 'CNY']),
+  "status": zod.enum(['pending', 'paid', 'rejected', 'cancelled']),
+  "payoutMethod": zod.string(),
+  "payoutInstitution": zod.string(),
+  "payoutAccountNumber": zod.string(),
+  "payoutAccountHolder": zod.string(),
+  "adminNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "ownerUsername": zod.string()
+}))
+export const ListAdminWithdrawalsResponse = zod.array(ListAdminWithdrawalsResponseItem)
+
+
+/**
+ * @summary Approve or reject a withdrawal request
+ */
+export const updateAdminWithdrawalBodyAdminNoteMax = 500;
+
+
+
+export const UpdateAdminWithdrawalBody = zod.object({
+  "withdrawalId": zod.string().uuid(),
+  "status": zod.enum(['paid', 'rejected']),
+  "adminNote": zod.string().max(updateAdminWithdrawalBodyAdminNoteMax).optional()
+})
+
+export const UpdateAdminWithdrawalResponse = zod.object({
+  "id": zod.string().uuid(),
+  "amount": zod.number().int(),
+  "currency": zod.enum(['IDR', 'USD', 'CNY']),
+  "status": zod.enum(['pending', 'paid', 'rejected', 'cancelled']),
+  "payoutMethod": zod.string(),
+  "payoutInstitution": zod.string(),
+  "payoutAccountNumber": zod.string(),
+  "payoutAccountHolder": zod.string(),
+  "adminNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "ownerUsername": zod.string()
+}))
 
 
 /**

@@ -14,13 +14,42 @@ export interface Error {
 }
 
 export interface AuthCredentials {
-  /** @maxLength 254 */
-  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  identifier: string;
   /**
      * @minLength 12
      * @maxLength 128
      */
   password: string;
+}
+
+export interface PasswordResetRequest {
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface PasswordResetConfirmation {
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  token: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface NotificationReadAllResult {
+  updated: boolean;
 }
 
 export interface UserRegistration {
@@ -29,6 +58,12 @@ export interface UserRegistration {
      * @maxLength 120
      */
   fullName: string;
+  /**
+     * @minLength 3
+     * @maxLength 28
+     * @pattern ^[a-z0-9_]+$
+     */
+  username: string;
   /** @maxLength 254 */
   email: string;
   /**
@@ -36,6 +71,11 @@ export interface UserRegistration {
      * @maxLength 128
      */
   password: string;
+  /** @maxLength 16 */
+  referralCode?: string;
+  termsAccepted: boolean;
+  /** @maxLength 4096 */
+  captchaToken?: string;
 }
 
 export interface AuthUser {
@@ -59,12 +99,23 @@ export const UserProfileLanguage = {
   zh: 'zh',
 } as const;
 
+export type UserProfilePreferredCurrency = typeof UserProfilePreferredCurrency[keyof typeof UserProfilePreferredCurrency];
+
+
+export const UserProfilePreferredCurrency = {
+  IDR: 'IDR',
+  USD: 'USD',
+  CNY: 'CNY',
+} as const;
+
 export interface UserProfile {
   fullName: string;
   username: string;
   /** @nullable */
   telegramUsername?: string | null;
   language: UserProfileLanguage;
+  preferredCurrency: UserProfilePreferredCurrency;
+  referralCode: string;
 }
 
 export type UserProfileUpdateLanguage = typeof UserProfileUpdateLanguage[keyof typeof UserProfileUpdateLanguage];
@@ -74,6 +125,15 @@ export const UserProfileUpdateLanguage = {
   id: 'id',
   en: 'en',
   zh: 'zh',
+} as const;
+
+export type UserProfileUpdatePreferredCurrency = typeof UserProfileUpdatePreferredCurrency[keyof typeof UserProfileUpdatePreferredCurrency];
+
+
+export const UserProfileUpdatePreferredCurrency = {
+  IDR: 'IDR',
+  USD: 'USD',
+  CNY: 'CNY',
 } as const;
 
 export interface UserProfileUpdate {
@@ -88,6 +148,140 @@ export interface UserProfileUpdate {
      */
   telegramUsername?: string | null;
   language?: UserProfileUpdateLanguage;
+  preferredCurrency?: UserProfileUpdatePreferredCurrency;
+}
+
+export interface CurrencySetting {
+  enabled: boolean;
+  /** @minimum 1 */
+  minimumWithdrawal: number;
+  /** @minimum 0 */
+  earningPerMessage: number;
+  /** @minimum 0 */
+  commissionPerMessage: number;
+}
+
+/**
+ * @nullable
+ */
+export type PayoutPreferencesMethod = typeof PayoutPreferencesMethod[keyof typeof PayoutPreferencesMethod] | null;
+
+
+export const PayoutPreferencesMethod = {
+  bank: 'bank',
+  e_wallet: 'e_wallet',
+} as const;
+
+export interface PayoutPreferences {
+  /** @nullable */
+  method: PayoutPreferencesMethod;
+  /** @nullable */
+  institution: string | null;
+  /** @nullable */
+  accountNumber: string | null;
+  /** @nullable */
+  accountHolder: string | null;
+}
+
+export type PayoutPreferencesInputMethod = typeof PayoutPreferencesInputMethod[keyof typeof PayoutPreferencesInputMethod];
+
+
+export const PayoutPreferencesInputMethod = {
+  bank: 'bank',
+  e_wallet: 'e_wallet',
+} as const;
+
+export interface PayoutPreferencesInput {
+  method: PayoutPreferencesInputMethod;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  institution: string;
+  /**
+     * @minLength 4
+     * @maxLength 40
+     */
+  accountNumber: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  accountHolder: string;
+}
+
+export type WithdrawalCurrency = typeof WithdrawalCurrency[keyof typeof WithdrawalCurrency];
+
+
+export const WithdrawalCurrency = {
+  IDR: 'IDR',
+  USD: 'USD',
+  CNY: 'CNY',
+} as const;
+
+export type WithdrawalStatus = typeof WithdrawalStatus[keyof typeof WithdrawalStatus];
+
+
+export const WithdrawalStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  rejected: 'rejected',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Withdrawal {
+  id: string;
+  amount: number;
+  currency: WithdrawalCurrency;
+  status: WithdrawalStatus;
+  payoutMethod: string;
+  payoutInstitution: string;
+  payoutAccountNumber: string;
+  payoutAccountHolder: string;
+  /** @nullable */
+  adminNote?: string | null;
+  createdAt: string;
+}
+
+export type AdminWithdrawal = Withdrawal & {
+  ownerUsername: string;
+};
+
+export type WalletOverviewCurrency = typeof WalletOverviewCurrency[keyof typeof WalletOverviewCurrency];
+
+
+export const WalletOverviewCurrency = {
+  IDR: 'IDR',
+  USD: 'USD',
+  CNY: 'CNY',
+} as const;
+
+export interface WalletOverview {
+  currency: WalletOverviewCurrency;
+  availableBalance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  minimumWithdrawal: number;
+  earningPerMessage: number;
+  commissionPerMessage: number;
+  withdrawals: Withdrawal[];
+  referralCode: string;
+  referralCount: number;
+  referralMessages: number;
+  referralEarnings: number;
+  payoutConfigured: boolean;
+}
+
+export type ReferralOverviewMembersItem = {
+  username: string;
+  joinedAt: string;
+  sentMessages: number;
+};
+
+export interface ReferralOverview {
+  referralCode: string;
+  referralLink: string;
+  members: ReferralOverviewMembersItem[];
 }
 
 export type DashboardSummaryConnectionStatus = typeof DashboardSummaryConnectionStatus[keyof typeof DashboardSummaryConnectionStatus];
@@ -108,26 +302,29 @@ export interface DashboardSummary {
   totalContacts: number;
   optedInContacts: number;
   optedOutContacts: number;
+  messagesQueued: number;
   messagesSent: number;
   messagesDelivered: number;
   messagesFailed: number;
+  messagesDeliveredLast7Days: number;
+  messagesFailedLast7Days: number;
 }
-
-export type ActivityItemKind = typeof ActivityItemKind[keyof typeof ActivityItemKind];
-
-
-export const ActivityItemKind = {
-  contact_added: 'contact_added',
-  consent_updated: 'consent_updated',
-  message_sent: 'message_sent',
-  device_connected: 'device_connected',
-  device_disconnected: 'device_disconnected',
-} as const;
 
 export interface ActivityItem {
   id: string;
-  kind: ActivityItemKind;
+  /** Activity event identifier stored by the workspace. */
+  kind: string;
   summary: string;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  /** @nullable */
+  readAt: string | null;
   createdAt: string;
 }
 
@@ -264,6 +461,39 @@ export interface ManualMessageInput {
      * @maxLength 4000
      */
   text: string;
+}
+
+export interface MessageBatchInput {
+  /**
+     * @minItems 1
+     * @maxItems 5
+     */
+  contactIds: string[];
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  text: string;
+}
+
+export type MessageBatchResultResultsItemStatus = typeof MessageBatchResultResultsItemStatus[keyof typeof MessageBatchResultResultsItemStatus];
+
+
+export const MessageBatchResultResultsItemStatus = {
+  sent: 'sent',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export type MessageBatchResultResultsItem = {
+  contactId: string;
+  contactName: string;
+  status: MessageBatchResultResultsItemStatus;
+  error?: string;
+};
+
+export interface MessageBatchResult {
+  results: MessageBatchResultResultsItem[];
 }
 
 export interface AdminMe {
@@ -509,14 +739,28 @@ export interface AdminMessageSendResult {
   createdAt: string;
 }
 
+export type AdminSystemSettingsCurrencySettings = {
+  IDR: CurrencySetting;
+  USD: CurrencySetting;
+  CNY: CurrencySetting;
+};
+
 export interface AdminSystemSettings {
   outboundMessagingEnabled: boolean;
+  currencySettings: AdminSystemSettingsCurrencySettings;
   /** @nullable */
   updatedAt: string | null;
 }
 
+export type AdminSystemSettingsUpdateCurrencySettings = {
+  IDR: CurrencySetting;
+  USD: CurrencySetting;
+  CNY: CurrencySetting;
+};
+
 export interface AdminSystemSettingsUpdate {
   outboundMessagingEnabled: boolean;
+  currencySettings?: AdminSystemSettingsUpdateCurrencySettings;
 }
 
 export type AdminConnectionActionResultStatus = typeof AdminConnectionActionResultStatus[keyof typeof AdminConnectionActionResultStatus];
@@ -531,7 +775,43 @@ export interface AdminConnectionActionResult {
   status: AdminConnectionActionResultStatus;
 }
 
+export type ChangePasswordBody = {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  currentPassword: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  newPassword: string;
+};
+
+export type CreateWithdrawalBodyCurrency = typeof CreateWithdrawalBodyCurrency[keyof typeof CreateWithdrawalBodyCurrency];
+
+
+export const CreateWithdrawalBodyCurrency = {
+  IDR: 'IDR',
+  USD: 'USD',
+  CNY: 'CNY',
+} as const;
+
+export type CreateWithdrawalBody = {
+  /** @minimum 1 */
+  amount: number;
+  currency: CreateWithdrawalBodyCurrency;
+};
+
 export type GetDashboardActivityParams = {
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListNotificationsParams = {
 /**
  * @minimum 1
  * @maximum 50
@@ -556,6 +836,11 @@ export const ListContactsConsent = {
   opted_out: 'opted_out',
   pending: 'pending',
 } as const;
+
+export type RequestWhatsAppQrCode200 = {
+  qrCode: string;
+  expiresInSeconds: number;
+};
 
 export type ListMessagesParams = {
 contactId?: string;
@@ -633,4 +918,34 @@ export const ListAdminMessagesStatus = {
   delivered: 'delivered',
   failed: 'failed',
 } as const;
+
+export type ListAdminWithdrawalsParams = {
+status?: ListAdminWithdrawalsStatus;
+};
+
+export type ListAdminWithdrawalsStatus = typeof ListAdminWithdrawalsStatus[keyof typeof ListAdminWithdrawalsStatus];
+
+
+export const ListAdminWithdrawalsStatus = {
+  all: 'all',
+  pending: 'pending',
+  paid: 'paid',
+  rejected: 'rejected',
+  cancelled: 'cancelled',
+} as const;
+
+export type UpdateAdminWithdrawalBodyStatus = typeof UpdateAdminWithdrawalBodyStatus[keyof typeof UpdateAdminWithdrawalBodyStatus];
+
+
+export const UpdateAdminWithdrawalBodyStatus = {
+  paid: 'paid',
+  rejected: 'rejected',
+} as const;
+
+export type UpdateAdminWithdrawalBody = {
+  withdrawalId: string;
+  status: UpdateAdminWithdrawalBodyStatus;
+  /** @maxLength 500 */
+  adminNote?: string;
+};
 

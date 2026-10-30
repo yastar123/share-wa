@@ -3,6 +3,7 @@ import {
   BufferJSON,
   initAuthCreds,
   makeWASocket,
+  WAMessageStatus,
   type AuthenticationCreds,
   type SignalDataSet,
   type SignalDataTypeMap,
@@ -12,8 +13,9 @@ import {
 import { hkdfSync, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import pino from "pino";
 import { and, eq, inArray } from "drizzle-orm";
-import { db, whatsappSessionsTable } from "@workspace/db";
+import { db, messagesTable, whatsappSessionsTable } from "@workspace/db";
 import { logger } from "./logger";
+import { createNotification } from "./notifications";
 
 type SessionRow = typeof whatsappSessionsTable.$inferSelect;
 type SessionState = {
@@ -26,6 +28,8 @@ type ActiveConnection = {
   state: SessionState;
   pairingReady: Promise<void>;
   resolvePairingReady: () => void;
+  qrCode: string | null;
+  qrCodeExpiresAt: number | null;
   manualDisconnect: boolean;
   reconnectScheduled: boolean;
 };
@@ -42,7 +46,11 @@ export class WhatsAppConnectionError extends Error {
 
 const activeConnections = new Map<string, ActiveConnection>();
 const silentLogger = pino({ level: "silent" });
-const sessionSecret = process.env.SESSION_SECRET || "sharewa-development-default-session-secret-key-32chars";
+const sessionSecret = process.env.SESSION_SECRET
+  ?? (process.env.NODE_ENV === "production"
+    ? ""
+    : "sharewa-development-default-session-secret-key-32chars");
+if (!sessionSecret) throw new Error("SESSION_SECRET is required to encrypt WhatsApp session data.");
 const encryptionKey = Buffer.from(
   hkdfSync(
     "sha256",
@@ -222,6 +230,8 @@ async function startConnection(
     state,
     pairingReady,
     resolvePairingReady,
+    qrCode: null,
+    qrCodeExpiresAt: null,
     manualDisconnect: false,
     reconnectScheduled: false,
   };
@@ -236,8 +246,53 @@ async function startConnection(
     });
   });
 
+  socket.ev.on("messages.update", (updates) => {
+    for (const { key, update } of updates) {
+      const messageId = key.id;
+      if (!messageId || typeof update.status !== "number") continue;
+      if (update.status < WAMessageStatus.DELIVERY_ACK) continue;
+      void db.update(messagesTable)
+        .set({ status: "delivered" })
+        .where(and(
+          eq(messagesTable.ownerUserId, ownerUserId),
+          eq(messagesTable.whatsappMessageId, messageId),
+          eq(messagesTable.status, "sent"),
+        ))
+        .returning({ id: messagesTable.id })
+        .then(async (updated) => {
+          if (updated.length > 0) {
+            await createNotification({
+              ownerUserId,
+              kind: "message_delivered",
+              title: "Pesan telah diterima",
+              body: "WhatsApp mengonfirmasi pesan telah sampai ke penerima.",
+            });
+          }
+        })
+        .catch((error: unknown) => {
+          logger.error({ err: error, ownerUserId, messageId }, "Failed to persist WhatsApp delivery acknowledgement");
+        });
+    }
+  });
+
   socket.ev.on("connection.update", (update) => {
     if (update.qr || update.connection === "open") {
+      if (update.qr) {
+        const qrCode = update.qr;
+        const expiresAt = Date.now() + 60_000;
+        connection.qrCode = qrCode;
+        connection.qrCodeExpiresAt = expiresAt;
+        setTimeout(() => {
+          if (connection.qrCode === qrCode && connection.qrCodeExpiresAt === expiresAt) {
+            connection.qrCode = null;
+            connection.qrCodeExpiresAt = null;
+          }
+        }, 60_000);
+      }
+      if (update.connection === "open") {
+        connection.qrCode = null;
+        connection.qrCodeExpiresAt = null;
+      }
       connection.resolvePairingReady();
     }
 
@@ -255,6 +310,8 @@ async function startConnection(
     }
 
     if (update.connection === "close") {
+      connection.qrCode = null;
+      connection.qrCodeExpiresAt = null;
       const statusCode = (
         update.lastDisconnect?.error as
           | { output?: { statusCode?: number } }
@@ -385,6 +442,33 @@ export async function requestWhatsAppPairingCode(
       502,
     );
   }
+}
+
+export async function requestWhatsAppQrCode(
+  ownerUserId: string,
+): Promise<{ qrCode: string; expiresInSeconds: number }> {
+  const connection = await startConnection(ownerUserId);
+  if (connection.state.creds.registered) {
+    throw new WhatsAppConnectionError("Akun WhatsApp sudah terhubung.", 409);
+  }
+  const deadline = Date.now() + 20_000;
+  while (
+    (!connection.qrCode || !connection.qrCodeExpiresAt || connection.qrCodeExpiresAt <= Date.now()) &&
+    Date.now() < deadline
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  if (
+    !connection.qrCode ||
+    !connection.qrCodeExpiresAt ||
+    connection.qrCodeExpiresAt <= Date.now()
+  ) {
+    throw new WhatsAppConnectionError("QR WhatsApp belum tersedia atau sudah kedaluwarsa. Coba lagi.", 503);
+  }
+  return {
+    qrCode: connection.qrCode,
+    expiresInSeconds: Math.ceil((connection.qrCodeExpiresAt - Date.now()) / 1000),
+  };
 }
 
 export async function disconnectWhatsApp(ownerUserId: string): Promise<void> {

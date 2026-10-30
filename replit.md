@@ -1,6 +1,6 @@
 # ShareWa
 
-ShareWa is a private, consent-first workspace for managing contacts, linking your own WhatsApp account, and sending one-to-one messages.
+ShareWa is a consent-first workspace for managing contacts, linking your own WhatsApp account, and sending limited, permission-based messages.
 
 ## Run & Operate
 
@@ -11,9 +11,15 @@ ShareWa is a private, consent-first workspace for managing contacts, linking you
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Replit provides PostgreSQL through the runtime-managed `DATABASE_URL`. No Clerk account or key is used.
-- Add `SESSION_SECRET`, `SHAREWA_ADMIN_EMAIL`, and `SHAREWA_ADMIN_PASSWORD` through Replit Secrets. The API creates or updates the initial administrator at startup when the email is valid and the password is 12–128 characters; otherwise the API stays online without an admin account.
+- Add a stable `SESSION_SECRET`, `SHAREWA_ADMIN_EMAIL`, and `SHAREWA_ADMIN_PASSWORD` through Replit Secrets. The API creates or updates the initial administrator at startup when the email is valid and the password is 12–128 characters; otherwise the API stays online without an admin account.
+- Configure `TURNSTILE_SECRET_KEY` and the frontend `VITE_TURNSTILE_SITE_KEY` to enable registration verification in production. Set `PUBLIC_APP_URL` to the canonical site URL for complete referral links.
+- Set the frontend `VITE_SUPPORT_TELEGRAM_URL` to an HTTPS `t.me` support link to show the dashboard help action.
+- Configure `RESEND_API_KEY`, `MAIL_FROM`, and `PUBLIC_APP_URL` to enable one-time password reset email links. New registrations require an email address; reset tokens expire after 30 minutes and can be used once.
 - User passwords are stored as scrypt hashes. Login sessions use expiring, HttpOnly cookies and hashed tokens in PostgreSQL.
-- Link only a WhatsApp account you own or are authorized to use. Messages are manual, one contact at a time, and require recorded consent.
+- Password recovery uses hashed, single-use 30-minute reset tokens, sends via Resend, and invalidates all existing sessions after a reset.
+- Link only a WhatsApp account you own or are authorized to use. Pair with a temporary QR code or phone-number code. Messages require recorded consent and are limited to batches of five, twenty attempts per hour, and a three-second pause between sends.
+- The wallet supports IDR, USD, and CNY. Administrators configure enabled currencies, minimum withdrawals, per-message earnings, and referral commissions; withdrawals are reviewed and paid manually outside ShareWa.
+- Withdrawal is not an automatic payment: the administrator verifies the saved destination, transfers funds manually through a bank or e-wallet outside ShareWa, and only then marks the request as paid in the admin dashboard.
 
 ## Stack
 
@@ -32,13 +38,14 @@ ShareWa is a private, consent-first workspace for managing contacts, linking you
 - `artifacts/api-server/src/lib/whatsapp.ts` — encrypted linked-device session handling and one-to-one sending
 - `lib/api-spec/openapi.yaml` — source API contract; generated client and Zod types live in `lib/api-client-react` and `lib/api-zod`
 - `lib/db/src/schema/sharewa.ts` — database tables and consent/message records
+- `lib/db/src/schema/admin.ts` — admin roles and system/currency settings
 
 ## Architecture decisions
 
-- All contact, message, activity, and linked-device records are scoped to the authenticated Clerk user.
-- WhatsApp credentials are encrypted before storage using `SESSION_SECRET`.
+- All contact, message, activity, linked-device, and wallet records are scoped to the authenticated application user.
+- WhatsApp credentials and payout destination details are encrypted before storage using the stable `SESSION_SECRET`.
 - Contact creation requires a positive consent confirmation and a source; opt-out immediately blocks future sends.
-- Message sending is intentionally manual and limited to one opted-in contact per request.
+- Message sending is intentionally limited to opted-in contacts, small batches, and hourly quotas.
 
 ## Product
 
@@ -46,13 +53,17 @@ ShareWa is a private, consent-first workspace for managing contacts, linking you
 - Contact book with search, consent filters, permission history, opt-out, edits, and deletion.
 - One-to-one message history and composer for opted-in contacts.
 - Profile, preferred language, and WhatsApp linked-device settings.
-- Login shows public example credentials for read-only admin and user previews; demo routes use fictional data only and never authenticate or access the database/API.
+- Persistent user notifications for send and withdrawal events, plus unread/read controls.
+- Wallet balance, referral tracking, payout destinations, and withdrawal history; admin currency configuration and manual withdrawal review.
+- Drizzle schema discovery for `db push` explicitly loads `sharewa.ts` and `admin.ts`, so it includes `sharewa_payout_preferences`, `sharewa_wallet_ledger`, `sharewa_withdrawals`, and the other application/admin tables.
+- Indonesian, English, and Simplified Chinese interface languages.
+- Local development shows quick-fill credentials for seeded demo accounts. Those public demo accounts and controls are disabled in production; configure the production administrator through secrets.
 
 ## Gotchas
 
-- Apply development schema changes with `pnpm --filter @workspace/db run push`; never run this against production.
+- Apply development schema changes with `pnpm --filter @workspace/db run push`; review and apply production schema changes through the production database migration process, not an unreviewed schema push.
 - After changing `lib/api-spec/openapi.yaml`, run the API codegen script before changing API/client code that depends on those schemas.
-- The app preview screenshot shows the public landing page; authenticated workspace pages require a signed-in Clerk session.
+- The app preview screenshot shows the public landing page; authenticated workspace pages require an application account.
 
 ## Pointers
 

@@ -12,6 +12,12 @@ export interface UserRegistration {
      * @maxLength 120
      */
   fullName: string;
+  /**
+     * @minLength 3
+     * @maxLength 28
+     * @pattern ^[a-z0-9_]+$
+     */
+  username: string;
   /** @maxLength 254 */
   email: string;
   /**
@@ -19,4 +25,9 @@ export interface UserRegistration {
      * @maxLength 128
      */
   password: string;
+  /** @maxLength 16 */
+  referralCode?: string;
+  termsAccepted: boolean;
+  /** @maxLength 4096 */
+  captchaToken?: string;
 }

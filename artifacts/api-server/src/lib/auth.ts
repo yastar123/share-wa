@@ -35,10 +35,8 @@ export function hashPassword(password: string): string {
 
 export function verifyPassword(password: string, storedHash: string): boolean {
   const [algorithm, encodedSalt, encodedKey] = storedHash.split("$");
-  logger.info({ algorithm, storedHash }, "Verifying password attempt");
   if (algorithm !== "scrypt" || !encodedSalt || !encodedKey) {
-      logger.warn("Invalid hash format");
-      return false;
+    return false;
   }
   try {
     const salt = Buffer.from(encodedSalt, "base64url");
@@ -50,14 +48,8 @@ export function verifyPassword(password: string, storedHash: string): boolean {
       p: 1,
       maxmem: 64 * 1024 * 1024,
     });
-    
-    const matches = timingSafeEqual(actual, expected);
-    if (!matches) {
-        logger.warn({ actual: actual.toString("base64url"), expected: expected.toString("base64url") }, "Password hash mismatch");
-    }
-    return matches;
-  } catch (e) {
-    logger.error({ err: e }, "Password verification threw error");
+    return timingSafeEqual(actual, expected);
+  } catch {
     return false;
   }
 }
@@ -144,9 +136,9 @@ export async function ensureInitialAdmin(): Promise<void> {
       await seedAccount(tx, adminEmail, adminPassword, "Administrator", true);
     }
 
-    // 2. Seed Demo Accounts
-    await seedAccount(tx, "admin.demo@sharewa.example", "DemoAdminPassword123", "Demo Admin", true);
-    await seedAccount(tx, "user.demo@sharewa.example", "DemoUserPassword123", "Demo User", false);
+    if (process.env.NODE_ENV !== "production") {
+      await seedAccount(tx, "admin.demo@sharewa.example", "DemoAdminPassword123", "Demo Admin", true);
+      await seedAccount(tx, "user.demo@sharewa.example", "DemoUserPassword123", "Demo User", false);
+    }
   });
 }
-

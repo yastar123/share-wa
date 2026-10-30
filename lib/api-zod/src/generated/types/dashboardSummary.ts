@@ -14,7 +14,10 @@ export interface DashboardSummary {
   totalContacts: number;
   optedInContacts: number;
   optedOutContacts: number;
+  messagesQueued: number;
   messagesSent: number;
   messagesDelivered: number;
   messagesFailed: number;
+  messagesDeliveredLast7Days: number;
+  messagesFailedLast7Days: number;
 }

@@ -5,11 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { ActivityItemKind } from './activityItemKind';
 
 export interface ActivityItem {
   id: string;
-  kind: ActivityItemKind;
+  /** Activity event identifier stored by the workspace. */
+  kind: string;
   summary: string;
   createdAt: Date;
 }

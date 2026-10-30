@@ -49,7 +49,11 @@ export default function ContactsPage() {
                 </td>
                 <td className="mono">{contact.phone}</td>
                 <td>
-                  <Badge status={contact.consentStatus} />
+                  <Badge
+                    variant={contact.consentStatus === 'opted_out' ? 'destructive' : contact.consentStatus === 'pending' ? 'secondary' : 'default'}
+                  >
+                    {t(contact.consentStatus === 'opted_in' ? 'Permission recorded' : contact.consentStatus === 'opted_out' ? 'Opted out' : 'Not confirmed')}
+                  </Badge>
                 </td>
                 <td>
                    <button className="icon-btn" onClick={() => remove.mutate({ contactId: contact.id }, { onSuccess: () => cache.invalidateQueries({ queryKey: getListContactsQueryKey() }) })}>

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import {
   GetDashboardActivityQueryParams,
   GetDashboardActivityResponse,
@@ -30,28 +30,44 @@ async function countContacts(userId: string, consentStatus?: "opted_in" | "opted
   return Number(row?.count ?? 0);
 }
 
-async function countMessages(userId: string, status: "sent" | "delivered" | "failed"): Promise<number> {
+async function countMessages(userId: string, status: "queued" | "sent" | "delivered" | "failed", since?: Date): Promise<number> {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(messagesTable)
     .where(and(
       eq(messagesTable.ownerUserId, userId),
       eq(messagesTable.status, status),
+      ...(since ? [gte(messagesTable.createdAt, since)] : []),
     ));
   return Number(row?.count ?? 0);
 }
 
 router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const userId = res.locals.userId as string;
-  const [connection, totalContacts, optedInContacts, optedOutContacts, messagesSent, messagesDelivered, messagesFailed] =
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [
+    connection,
+    totalContacts,
+    optedInContacts,
+    optedOutContacts,
+    messagesQueued,
+    messagesSent,
+    messagesDelivered,
+    messagesFailed,
+    messagesDeliveredLast7Days,
+    messagesFailedLast7Days,
+  ] =
     await Promise.all([
       getWhatsAppStatus(userId),
       countContacts(userId),
       countContacts(userId, "opted_in"),
       countContacts(userId, "opted_out"),
+      countMessages(userId, "queued"),
       countMessages(userId, "sent"),
       countMessages(userId, "delivered"),
       countMessages(userId, "failed"),
+      countMessages(userId, "delivered", sevenDaysAgo),
+      countMessages(userId, "failed", sevenDaysAgo),
     ]);
 
   res.json(
@@ -61,9 +77,12 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       totalContacts,
       optedInContacts,
       optedOutContacts,
+      messagesQueued,
       messagesSent,
       messagesDelivered,
       messagesFailed,
+      messagesDeliveredLast7Days,
+      messagesFailedLast7Days,
     }),
   );
 });

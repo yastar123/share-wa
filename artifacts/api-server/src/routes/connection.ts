@@ -4,12 +4,14 @@ import {
   GetConnectionStatusResponse,
   RequestPairingCodeBody,
   RequestPairingCodeResponse,
+  RequestWhatsAppQrCodeResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   disconnectWhatsApp,
   getWhatsAppStatus,
   requestWhatsAppPairingCode,
+  requestWhatsAppQrCode,
   WhatsAppConnectionError,
 } from "../lib/whatsapp";
 
@@ -37,6 +39,19 @@ router.post("/connection/pairing-code", async (req, res): Promise<void> => {
       status: "awaiting_link",
       ...pairing,
     }));
+  } catch (error) {
+    if (error instanceof WhatsAppConnectionError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.post("/connection/qr", async (_req, res): Promise<void> => {
+  try {
+    const qr = await requestWhatsAppQrCode(res.locals.userId as string);
+    res.json(RequestWhatsAppQrCodeResponse.parse(qr));
   } catch (error) {
     if (error instanceof WhatsAppConnectionError) {
       res.status(error.statusCode).json({ error: error.message });

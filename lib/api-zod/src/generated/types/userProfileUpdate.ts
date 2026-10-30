@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { UserProfileUpdateLanguage } from './userProfileUpdateLanguage';
+import type { UserProfileUpdatePreferredCurrency } from './userProfileUpdatePreferredCurrency';
 
 export interface UserProfileUpdate {
   /**
@@ -19,4 +20,5 @@ export interface UserProfileUpdate {
      */
   telegramUsername?: string | null;
   language?: UserProfileUpdateLanguage;
+  preferredCurrency?: UserProfileUpdatePreferredCurrency;
 }
