@@ -4,7 +4,7 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/root/share-wa}"
 BACKUP_DIR="${BACKUP_DIR:-/root/env-backup}"
 WEB_DIR="${WEB_DIR:-/var/www/sharewa}"
-PM2_APP_NAME="${PM2_APP_NAME:-sharewa}"
+PM2_APP_NAME="${PM2_APP_NAME:-}"
 RUN_DB_PUSH="${RUN_DB_PUSH:-0}"
 ENV_FILES=(".env" "artifacts/api-server/.env")
 
@@ -77,8 +77,29 @@ echo "==> [6/7] Build application"
 pnpm build
 [[ -f "$APP_DIR/artifacts/sharewa/dist/index.html" ]] \
   || die "Frontend build did not produce artifacts/sharewa/dist/index.html."
-pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1 \
-  || die "PM2 app '$PM2_APP_NAME' was not found. Set PM2_APP_NAME to the deployed app name."
+
+if [[ -z "$PM2_APP_NAME" ]]; then
+  mapfile -t matching_pm2_apps < <(
+    pm2 jlist | node -e '
+      const path = require("node:path");
+      const root = path.resolve(process.argv[1]);
+      const apps = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+      for (const app of apps) {
+        const cwd = app.pm2_env?.pm_cwd;
+        if (cwd && (path.resolve(cwd) === root || path.resolve(cwd).startsWith(root + path.sep))) {
+          console.log(app.name);
+        }
+      }
+    ' "$APP_DIR"
+  )
+  if [[ "${#matching_pm2_apps[@]}" -ne 1 ]]; then
+    die "Could not identify one PM2 app for $APP_DIR. Set PM2_APP_NAME explicitly (check 'pm2 list')."
+  fi
+  PM2_APP_NAME="${matching_pm2_apps[0]}"
+  echo "Using PM2 app: $PM2_APP_NAME"
+elif ! pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
+  die "PM2 app '$PM2_APP_NAME' was not found."
+fi
 
 echo "==> [7/7] Deploy frontend and restart PM2 app"
 mkdir -p "$WEB_DIR"

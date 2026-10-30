@@ -5,6 +5,12 @@ import { defineConfig } from 'vite';
 
 const port = Number(process.env.PORT || '3000');
 const basePath = process.env.BASE_PATH || '/';
+const apiProxy = {
+  '/api': {
+    target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3000',
+    changeOrigin: true,
+  },
+};
 
 export default defineConfig({
   base: basePath,
@@ -50,6 +56,7 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: apiProxy,
     fs: {
       strict: true,
     },
@@ -58,6 +65,6 @@ export default defineConfig({
     port,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: apiProxy,
   },
 });
-
