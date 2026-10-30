@@ -282,10 +282,14 @@ async function parseErrorBody(response: Response, method: string): Promise<unkno
   return raw;
 }
 
-function inferResponseType(response: Response): "json" | "text" | "blob" {
+function inferResponseType(
+  response: Response,
+  requestUrl: string,
+): "json" | "text" | "blob" {
   const mediaType = getMediaType(response.headers);
 
   if (isJsonMediaType(mediaType)) return "json";
+  if (requestUrl.includes("/api/")) return "json";
   if (isTextMediaType(mediaType) || mediaType == null) return "text";
   return "blob";
 }
@@ -300,7 +304,9 @@ async function parseSuccessBody(
   }
 
   const effectiveType =
-    responseType === "auto" ? inferResponseType(response) : responseType;
+    responseType === "auto"
+      ? inferResponseType(response, requestInfo.url)
+      : responseType;
 
   switch (effectiveType) {
     case "json":

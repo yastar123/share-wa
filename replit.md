@@ -4,7 +4,7 @@ ShareWa is a consent-first workspace for managing contacts, linking your own Wha
 
 ## Run & Operate
 
-- The `artifacts/sharewa: web` and `artifacts/api-server: API Server` workflows run the app and API in preview.
+- The `artifacts/sharewa: web` and `artifacts/api-server: API Server` workflows run the app and API in preview. The web artifact's production server runs the root Express app so frontend routes and `/api` share the same origin.
 - `pnpm install --frozen-lockfile` — install workspace dependencies
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages

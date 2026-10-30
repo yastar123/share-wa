@@ -15,13 +15,14 @@ localPort = 25841
 run = "pnpm --filter @workspace/sharewa run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/sharewa", "run", "build" ]
-serve = "static"
-publicDir = "artifacts/sharewa/dist/public"
+build = [ "pnpm", "run", "build" ]
 
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+[services.production.run]
+args = [ "pnpm", "start" ]
+
+[services.production.run.env]
+PORT = "25841"
+NODE_ENV = "production"
 
 [services.env]
 PORT = "25841"
