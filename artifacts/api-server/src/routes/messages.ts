@@ -14,11 +14,11 @@ import {
   sendOneManualWhatsAppMessage,
   WhatsAppConnectionError,
 } from "../lib/whatsapp";
-import { isOutboundMessagingEnabled } from "../lib/system-settings";
 import {
-  outboundMessagePolicy,
-  reserveOutboundMessage,
-} from "../lib/outbound-rate-limit";
+  getOutboundMessageLimits,
+  isOutboundMessagingEnabled,
+} from "../lib/system-settings";
+import { reserveOutboundMessage } from "../lib/outbound-rate-limit";
 import { awardMessageEarnings, awardReferralCommission } from "../lib/wallet";
 import { createNotification } from "../lib/notifications";
 
@@ -61,6 +61,7 @@ router.post("/messages", async (req, res): Promise<void> => {
     return;
   }
   const userId = res.locals.userId as string;
+  const messageLimits = await getOutboundMessageLimits();
   const [contact] = await db
     .select()
     .from(contactsTable)
@@ -84,10 +85,11 @@ router.post("/messages", async (req, res): Promise<void> => {
     contactName: contact.displayName,
     phone: contact.phone,
     text,
+    maxMessagesPerHour: messageLimits.maxMessagesPerHour,
   });
   if (!message) {
     res.status(429).json({
-      error: `Batas ${outboundMessagePolicy.maxMessagesPerHour} pesan per jam telah tercapai.`,
+      error: `Batas ${messageLimits.maxMessagesPerHour} pesan per jam telah tercapai.`,
     });
     return;
   }
@@ -157,9 +159,10 @@ router.post("/messages/batch", async (req, res): Promise<void> => {
     res.status(503).json({ error: "Pengiriman pesan sedang dijeda oleh administrator." });
     return;
   }
-  if (parsed.data.contactIds.length > outboundMessagePolicy.maxBatchSize) {
+  const messageLimits = await getOutboundMessageLimits();
+  if (parsed.data.contactIds.length > messageLimits.maxBatchSize) {
     res.status(400).json({
-      error: `Satu batch maksimal berisi ${outboundMessagePolicy.maxBatchSize} kontak.`,
+      error: `Satu batch maksimal berisi ${messageLimits.maxBatchSize} kontak.`,
     });
     return;
   }
@@ -244,13 +247,14 @@ router.post("/messages/batch", async (req, res): Promise<void> => {
       contactName: contact.displayName,
       phone: contact.phone,
       text,
+      maxMessagesPerHour: messageLimits.maxMessagesPerHour,
     });
     if (!message) {
       results.push({
         contactId: contact.id,
         contactName: contact.displayName,
         status: "skipped",
-        error: "Batas pesan per jam telah tercapai.",
+        error: `Batas ${messageLimits.maxMessagesPerHour} pesan per jam telah tercapai.`,
       });
       for (const remainingContact of optedInTargets.slice(index + 1)) {
         if (!remainingContact) continue;
@@ -258,7 +262,7 @@ router.post("/messages/batch", async (req, res): Promise<void> => {
           contactId: remainingContact.id,
           contactName: remainingContact.displayName,
           status: "skipped",
-          error: "Batas pesan per jam telah tercapai.",
+          error: `Batas ${messageLimits.maxMessagesPerHour} pesan per jam telah tercapai.`,
         });
       }
       break;
@@ -327,7 +331,7 @@ router.post("/messages/batch", async (req, res): Promise<void> => {
     if (index < optedInTargets.length - 1) {
       await new Promise((resolve) => setTimeout(
         resolve,
-        outboundMessagePolicy.delayBetweenMessagesMs,
+        messageLimits.delayBetweenMessagesMs,
       ));
     }
   }

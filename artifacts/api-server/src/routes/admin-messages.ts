@@ -20,11 +20,11 @@ import {
   sendOneManualWhatsAppMessage,
   WhatsAppConnectionError,
 } from "../lib/whatsapp";
-import { isOutboundMessagingEnabled } from "../lib/system-settings";
 import {
-  outboundMessagePolicy,
-  reserveOutboundMessage,
-} from "../lib/outbound-rate-limit";
+  getOutboundMessageLimits,
+  isOutboundMessagingEnabled,
+} from "../lib/system-settings";
+import { reserveOutboundMessage } from "../lib/outbound-rate-limit";
 import { awardMessageEarnings, awardReferralCommission } from "../lib/wallet";
 
 const router: IRouter = Router();
@@ -176,16 +176,18 @@ router.post("/admin/messages", async (req, res): Promise<void> => {
     return;
   }
 
+  const messageLimits = await getOutboundMessageLimits();
   const message = await reserveOutboundMessage({
     ownerUserId: parsed.data.ownerUserId,
     contactId: contact.id,
     contactName: contact.displayName,
     phone: contact.phone,
     text,
+    maxMessagesPerHour: messageLimits.maxMessagesPerHour,
   });
   if (!message) {
     res.status(429).json({
-      error: `Batas ${outboundMessagePolicy.maxMessagesPerHour} pesan per jam telah tercapai untuk akun ini.`,
+      error: `Batas ${messageLimits.maxMessagesPerHour} pesan per jam telah tercapai untuk akun ini.`,
     });
     return;
   }

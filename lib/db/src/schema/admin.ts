@@ -21,6 +21,18 @@ export const systemSettingsTable = pgTable("sharewa_system_settings", {
   outboundMessagingEnabled: boolean("outbound_messaging_enabled")
     .notNull()
     .default(true),
+  outboundMessageLimits: jsonb("outbound_message_limits")
+    .$type<{
+      maxBatchSize: number;
+      maxMessagesPerHour: number;
+      delayBetweenMessagesMs: number;
+    }>()
+    .notNull()
+    .default({
+      maxBatchSize: 5,
+      maxMessagesPerHour: 20,
+      delayBetweenMessagesMs: 3000,
+    }),
   currencySettings: jsonb("currency_settings")
     .$type<Record<string, {
       enabled: boolean;

@@ -1767,6 +1767,8 @@ components:
       type: object
       properties:
         outboundMessagingEnabled: { type: boolean }
+        outboundMessageLimits:
+          $ref: "#/components/schemas/OutboundMessageLimits"
         currencySettings:
           type: object
           properties:
@@ -1775,11 +1777,13 @@ components:
             CNY: { $ref: "#/components/schemas/CurrencySetting" }
           required: [IDR, USD, CNY]
         updatedAt: { type: ["string", "null"], format: date-time }
-      required: [outboundMessagingEnabled, currencySettings, updatedAt]
+      required: [outboundMessagingEnabled, outboundMessageLimits, currencySettings, updatedAt]
     AdminSystemSettingsUpdate:
       type: object
       properties:
         outboundMessagingEnabled: { type: boolean }
+        outboundMessageLimits:
+          $ref: "#/components/schemas/OutboundMessageLimits"
         currencySettings:
           type: object
           properties:
@@ -1788,6 +1792,13 @@ components:
             CNY: { $ref: "#/components/schemas/CurrencySetting" }
           required: [IDR, USD, CNY]
       required: [outboundMessagingEnabled]
+    OutboundMessageLimits:
+      type: object
+      properties:
+        maxBatchSize: { type: integer, minimum: 1, maximum: 5 }
+        maxMessagesPerHour: { type: integer, minimum: 1, maximum: 20 }
+        delayBetweenMessagesMs: { type: integer, minimum: 3000, maximum: 3600000 }
+      required: [maxBatchSize, maxMessagesPerHour, delayBetweenMessagesMs]
     AdminConnectionActionResult:
       type: object
       properties:

@@ -1,11 +1,9 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db, messagesTable, type Message } from "@workspace/db";
-
-export const outboundMessagePolicy = {
-  maxBatchSize: 5,
-  maxMessagesPerHour: 20,
-  delayBetweenMessagesMs: 3000,
-} as const;
+import {
+  DEFAULT_OUTBOUND_MESSAGE_LIMITS,
+  type OutboundMessageLimits,
+} from "./system-settings";
 
 const accountLocks = new Map<string, Promise<void>>();
 
@@ -31,6 +29,7 @@ export async function reserveOutboundMessage(input: {
   contactName: string;
   phone: string;
   text: string;
+  maxMessagesPerHour?: number;
 }): Promise<Message | null> {
   return withAccountLock(input.ownerUserId, () => db.transaction(async (tx) => {
     await tx.execute(sql`
@@ -46,7 +45,7 @@ export async function reserveOutboundMessage(input: {
         gte(messagesTable.createdAt, cutoff),
       ));
     const remaining = Math.max(
-      outboundMessagePolicy.maxMessagesPerHour - recentMessages.length,
+      (input.maxMessagesPerHour ?? DEFAULT_OUTBOUND_MESSAGE_LIMITS.maxMessagesPerHour) - recentMessages.length,
       0,
     );
     if (remaining === 0) return null;

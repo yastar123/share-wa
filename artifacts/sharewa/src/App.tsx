@@ -124,7 +124,7 @@ function Workspace({ children, path, adminSection, onAdminSectionChange }: {
   const markAllNotificationsRead = useMarkAllNotificationsRead();
   useEffect(() => {
     if (profile.data?.language && profile.data.language !== language) setLanguage(profile.data.language);
-  }, [language, profile.data?.language, setLanguage]);
+  }, [profile.data?.language, setLanguage]);
   const shortName = profile.data?.fullName || currentUser.data?.fullName || currentUser.data?.email || 'Your account';
   return <div className="app-layout">
     <aside className="sidebar">
@@ -226,13 +226,16 @@ function DashboardPage() {
   const [qrCode, setQrCode] = useState<{ qrCode: string; expiresAt: number } | null>(null);
   const [qrSecondsRemaining, setQrSecondsRemaining] = useState(0);
   const data = summary.data;
-  const isLive = connection.data?.status === 'connected' || data?.connectionStatus === 'connected';
-  const waitingForConnection = connection.data?.status === 'awaiting_link' || connection.data?.status === 'reconnecting';
+  const isLive = connection.data?.status === 'connected';
   useEffect(() => {
-    if (!waitingForConnection) return;
-    const timer = window.setInterval(() => void connection.refetch(), 3000);
-    return () => window.clearInterval(timer);
-  }, [connection.refetch, waitingForConnection]);
+    if (!showPair || !isLive) return;
+    setShowPair(false);
+    setPairing(null);
+    setQrCode(null);
+    toast.notify(t('WhatsApp connected successfully.'));
+    void invalidate.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    void invalidate.invalidateQueries({ queryKey: getGetDashboardActivityQueryKey() });
+  }, [invalidate, isLive, showPair, t, toast.notify]);
   useEffect(() => {
     if (!qrCode) {
       setQrSecondsRemaining(0);
@@ -298,7 +301,7 @@ function DashboardPage() {
       <section className="panel panel-pad"><div className="section-heading"><div><h2 className="section-title">{t('Recent activity')}</h2><p className="section-subtitle">{t('A private record of workspace changes.')}</p></div><Link href="/messages" className="text-link">{t('View messages')} <ArrowRight size={12} /></Link></div>
         {activity.isLoading ? <LoadingPanel /> : activity.isError ? <ErrorBox onRetry={() => void activity.refetch()} /> : activities.length ? <div className="activity-list">{activities.map((item) => <div className="activity-row" key={item.id} data-testid={`activity-item-${item.id}`}><span className="activity-icon">{activityIcon(item.kind)}</span><div className="activity-copy">{translateActivitySummary(language, item.summary)}<div className="activity-time">{formatDate(item.createdAt, language)}</div></div></div>)}</div> : <EmptyState title={t('No activity yet')} copy={t('Your contact, consent, and message actions will appear here.')} />}</section>
       <section className="panel panel-pad"><div className="section-heading"><div><h2 className="section-title">{t('Your WhatsApp')}</h2><p className="section-subtitle">{t('One linked account, under your control.')}</p></div><Link href="/settings" className="icon-btn" aria-label={t('Open connection settings')}><MoreHorizontal size={17} /></Link></div>
-        <div className="connection-card"><div className="connection-state"><span className={`state-dot ${isLive ? 'live' : ''}`} /><span>{isLive ? t('Connected') : connection.data?.status === 'awaiting_link' ? t('Awaiting link') : connection.data?.status === 'reconnecting' ? t('Reconnecting') : t('Not connected')}</span></div><div className="phone-line">{connection.data?.linkedPhone || data?.linkedPhone || <span className="muted">{t('No account linked')}</span>}</div><p className="connection-note">{connection.data?.message ? t(connection.data.message) : (isLive ? t('Messages are available only for contacts with recorded permission.') : t('Link your own WhatsApp account to send individual messages.'))}</p>
+        <div className="connection-card"><div className="connection-state"><span className={`state-dot ${isLive ? 'live' : ''}`} /><span>{isLive ? t('Connected') : connection.data?.status === 'awaiting_link' ? t('Awaiting link') : connection.data?.status === 'reconnecting' ? t('Reconnecting') : t('Not connected')}</span></div><div className="phone-line">{connection.data?.linkedPhone || <span className="muted">{t('No account linked')}</span>}</div><p className="connection-note">{connection.data?.message ? t(connection.data.message) : (isLive ? t('Messages are available only for contacts with recorded permission.') : t('Link your own WhatsApp account to send individual messages.'))}</p>
           {connection.isError ? <ErrorBox onRetry={() => void connection.refetch()} /> : isLive ? <button type="button" className="btn btn-danger btn-sm" onClick={() => disconnect.mutate(undefined, { onSuccess: () => { void invalidate.invalidateQueries({ queryKey: getGetConnectionStatusQueryKey() }); void invalidate.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }); toast.notify(t('WhatsApp disconnected.')); } })} disabled={disconnect.isPending} data-testid="button-disconnect">{disconnect.isPending ? t('Disconnecting…') : <><Unplug size={14} /> {t('Disconnect')}</>}</button> : <button type="button" className="btn btn-primary btn-sm" onClick={() => { setShowPair(true); setPairing(null); setQrCode(null); }} data-testid="button-link-whatsapp"><Link2 size={14} /> {t('Link WhatsApp')}</button>}
         </div>
       </section>
@@ -330,7 +333,7 @@ function MessagesPage() {
   const contactsQuery = useListContacts({ consent: 'opted_in' });
   const [selectedId, setSelectedId] = useState('');
   const [text, setText] = useState('');
-  const connection = useGetConnectionStatus();
+  const connection = useGetConnectionStatus({ query: { refetchInterval: 3_000 } });
   const messagesQuery = useListMessages({ limit: 100 }, { query: { refetchInterval: 3_000 } });
   const send = useSendManualMessage();
   const batchSend = useSendMessageBatch();
@@ -509,10 +512,11 @@ function SettingsPage() {
   const { t, setLanguage: setAppLanguage } = useAppLanguage();
   const profile = useGetProfile();
   const updateProfile = useUpdateProfile();
+  const saveLanguage = useUpdateProfile();
   const payoutQuery = useGetPayoutPreferences();
   const savePayout = useSavePayoutPreferences();
   const changePassword = useChangePassword();
-  const connection = useGetConnectionStatus();
+  const connection = useGetConnectionStatus({ query: { refetchInterval: 3_000 } });
   const disconnect = useDisconnectWhatsApp();
   const cache = useQueryClient();
   const toast = useToastMessage();
@@ -563,6 +567,23 @@ function SettingsPage() {
       onSuccess: (updated) => { cache.setQueryData(getGetProfileQueryKey(), updated); setAppLanguage(updated.language); toast.notify(translate(updated.language, 'Preferences saved.')); },
     });
   };
+  const selectLanguage = (nextLanguage: UserProfileLanguage) => {
+    setLanguage(nextLanguage);
+    setAppLanguage(nextLanguage);
+    saveLanguage.mutate({ data: { language: nextLanguage } }, {
+      onSuccess: (updated) => {
+        cache.setQueryData(getGetProfileQueryKey(), updated);
+        setAppLanguage(updated.language);
+        toast.notify(translate(updated.language, 'Language preference saved.'));
+      },
+      onError: (error) => {
+        console.error('Could not save workspace language preference.', error);
+        const savedLanguage = profile.data?.language ?? 'id';
+        setLanguage(savedLanguage);
+        setAppLanguage(savedLanguage);
+      },
+    });
+  };
   const submitPassword = (event: FormEvent) => {
     event.preventDefault();
     if (newPassword !== repeatPassword) return;
@@ -594,9 +615,9 @@ function SettingsPage() {
         <div className="form-field"><label className="field-label" htmlFor="profile-username">{t('Username')}</label><input className="field" id="profile-username" value={profile.data?.username || ''} readOnly disabled data-testid="input-profile-username" /><div className="small-caption" style={{ marginTop: 6 }}>{t('Managed by your sign-in account.')}</div></div>
         <div className="form-field"><label className="field-label" htmlFor="profile-telegram">{t('Telegram username')} <span className="muted">{t('(optional)')}</span></label><input className="field" id="profile-telegram" value={telegram} onChange={(e) => setTelegram(e.target.value)} maxLength={64} placeholder="@username" data-testid="input-profile-telegram" /></div>
         <div className="form-field"><label className="field-label" htmlFor="profile-currency">{t('Wallet currency')}</label><select className="select" id="profile-currency" value={currency} onChange={(event) => setCurrency(event.target.value as 'IDR' | 'USD' | 'CNY')}><option value="IDR">IDR · Rupiah</option><option value="USD">USD · US Dollar</option><option value="CNY">CNY · Yuan</option></select></div>
-        <button className="btn btn-primary" type="submit" disabled={updateProfile.isPending || !fullName.trim()} data-testid="button-save-profile">{updateProfile.isPending ? t('Saving…') : t('Save preferences')}<ArrowRight size={14} /></button>{updateProfile.isError && <p className="dialog-error">{t('Could not save preferences. Try again.')}</p>}
+        <button className="btn btn-primary" type="submit" disabled={updateProfile.isPending || saveLanguage.isPending || !fullName.trim()} data-testid="button-save-profile">{updateProfile.isPending ? t('Saving…') : t('Save preferences')}<ArrowRight size={14} /></button>{updateProfile.isError && <p className="dialog-error">{t('Could not save preferences. Try again.')}</p>}
       </form>
-      <div className="panel settings-panel"><div className="section-heading"><div><h3 className="section-title">{t('Workspace language')}</h3><p className="section-subtitle">{t('Choose your preferred language.')}</p></div><Languages size={17} className="muted" /></div><div className="lang-options">{([{ id: 'id', title: 'Bahasa Indonesia', hint: 'Indonesian' }, { id: 'en', title: 'English', hint: 'English' }, { id: 'zh', title: '简体中文', hint: 'Chinese' }] as const).map((item) => <button type="button" className={`lang-option${language === item.id ? ' selected' : ''}`} key={item.id} onClick={() => { setLanguage(item.id); setAppLanguage(item.id); }} data-testid={`button-preference-language-${item.id}`}><span className="radio-dot" /><span style={{ flex: 1, textAlign: 'left' }}>{t(item.title)}<span className="small-caption" style={{ display: 'block', marginTop: 2 }}>{t(item.hint)}</span></span>{language === item.id && <Check size={15} />}</button>)}</div><div className="notice" style={{ marginTop: 18 }}>{t('Language preference is saved with your profile.')}</div></div>
+      <div className="panel settings-panel"><div className="section-heading"><div><h3 className="section-title">{t('Workspace language')}</h3><p className="section-subtitle">{t('Choose your preferred language.')}</p></div><Languages size={17} className="muted" /></div><div className="lang-options">{([{ id: 'id', title: 'Bahasa Indonesia' }, { id: 'en', title: 'English' }, { id: 'zh', title: '简体中文' }] as const).map((item) => <button type="button" className={`lang-option${language === item.id ? ' selected' : ''}`} key={item.id} onClick={() => selectLanguage(item.id)} disabled={saveLanguage.isPending || updateProfile.isPending} data-testid={`button-preference-language-${item.id}`}><span className="radio-dot" /><span style={{ flex: 1, textAlign: 'left' }}>{t(item.title)}</span>{language === item.id && <Check size={15} />}</button>)}</div>{saveLanguage.isPending && <p className="small-caption" role="status">{t('Saving…')}</p>}{saveLanguage.isError && <p className="dialog-error" role="alert">{t('Could not save language preference. Try again.')}</p>}<div className="notice" style={{ marginTop: 18 }}>{t('Language preference is saved with your profile.')}</div></div>
       <form className="panel settings-panel" onSubmit={submitPassword}>
         <div className="section-heading"><div><h3 className="section-title">{t('Change password')}</h3><p className="section-subtitle">{t('Use at least 12 characters. Changing your password signs out other sessions.')}</p></div><LockKeyhole size={17} className="muted" /></div>
         <div className="form-field"><label className="field-label" htmlFor="current-password">{t('Current password')}</label><input className="field" id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></div>
